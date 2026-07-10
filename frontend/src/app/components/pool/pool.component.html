@@ -7,8 +7,9 @@
     <div style="display:flex" class="mb-3">
       <app-mining-pool [slug]="poolStats.pool.slug" [name]="poolStats.pool.name" [showName]="false" [logoStyle]="'width:50px;height:50px;'" [logoClass]="'me-3'"></app-mining-pool>
       <h1 class="m-0 pt-1 pt-md-0">{{ poolStats.pool.name }}</h1>
-      <a *ngIf="poolStats.pool.link" [href]="poolStats.pool.link" target="_blank" rel="noopener noreferrer" class="ms-2 pt-1 pt-md-0" style="align-self: center;">
+      <a *ngIf="poolStats.pool.link" [href]="poolStats.pool.link" target="_blank" rel="noopener noreferrer" class="ms-2 pt-1 pt-md-0" style="align-self: center; white-space: nowrap;">
         <fa-icon [icon]="['fas', 'external-link-alt']" [fixedWidth]="true"></fa-icon>
+        <span *ngIf="poolStats.pool.slug === 'unknown'">&nbsp;Solo Pool Software</span>
       </a>
     </div>
 

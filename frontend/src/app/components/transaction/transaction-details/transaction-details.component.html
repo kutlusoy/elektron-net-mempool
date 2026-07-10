@@ -265,9 +265,9 @@
         </div>
         <ng-template #clusterPreviewTooltip>
           @if (clusterPreviewStats.chunkSize === 1) {
-            <p i18n="cluster.preview.chunk-line-one">This transaction belongs to a chunk of 1 transaction, with combined effective fee rate <strong>{{ clusterPreviewStats.chunkFeerate | feeRounding }} sat/vB</strong>.</p>
+            <p i18n="cluster.preview.chunk-line-one">This transaction belongs to a chunk of 1 transaction, with combined effective fee rate <strong>{{ clusterPreviewStats.chunkFeerate | feeRounding }} lep/vB</strong>.</p>
           } @else {
-            <p i18n="cluster.preview.chunk-line-many">This transaction belongs to a chunk of {{ clusterPreviewStats.chunkSize }} transactions, with combined effective fee rate <strong>{{ clusterPreviewStats.chunkFeerate | feeRounding }} sat/vB</strong>.</p>
+            <p i18n="cluster.preview.chunk-line-many">This transaction belongs to a chunk of {{ clusterPreviewStats.chunkSize }} transactions, with combined effective fee rate <strong>{{ clusterPreviewStats.chunkFeerate | feeRounding }} lep/vB</strong>.</p>
           }
           @if (clusterPreviewStats.otherChunks === 1) {
             <p i18n="cluster.preview.cluster-line-one">In a mempool cluster containing 1 other chunk.</p>
