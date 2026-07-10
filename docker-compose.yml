@@ -18,6 +18,7 @@ services:
         set -e &&
         cp -r ./docker/backend/. ./backend/ &&
         cp -r ./docker/frontend/. ./frontend/ &&
+        mkdir -p ./backend/GeoIP &&
         cp ./nginx.conf ./http-basic.conf ./nginx-mempool.conf ./frontend/ &&
         sed -i -e "s#127.0.0.1:80#0.0.0.0:__MEMPOOL_FRONTEND_HTTP_PORT__#g" ./frontend/nginx.conf &&
         sed -i -e "s#127.0.0.1#0.0.0.0#g" ./frontend/nginx.conf &&
