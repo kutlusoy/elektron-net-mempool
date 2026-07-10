@@ -82,6 +82,13 @@ services:
       DATABASE_PASSWORD: "mempool"
       STATISTICS_ENABLED: "true"
       FIAT_PRICE_ENABLED: "false"
+      # 0 = disable retroactive mining-dashboard backfill. Without -txindex,
+      # indexing thousands of old blocks means reading each one's full block
+      # file from disk just to find its coinbase tx - slow enough to time out
+      # and get stuck retrying. Blocks are still indexed live as they arrive
+      # via the normal sync loop; this only skips backfilling old history,
+      # which matches our current-UTXO-over-history priority anyway.
+      MEMPOOL_INDEXING_BLOCKS_AMOUNT: "0"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
