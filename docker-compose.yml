@@ -39,7 +39,11 @@ services:
       MYSQL_PASSWORD: "mempool"
       MYSQL_RANDOM_ROOT_PASSWORD: "1"
     volumes:
-      - ./data/mempool-db:/var/lib/mysql
+      # Named volume, not a bind mount: on Docker Desktop for Windows, bind
+      # mounts go through a filesystem translation layer that doesn't give
+      # InnoDB the atomic rename/lock semantics it needs, causing exactly
+      # the "Tablespace is missing" errors we hit with ./data/mempool-db.
+      - mempool-db-data:/var/lib/mysql
 
   elektron-mempool-api:
     container_name: elektron-mempool-api
@@ -140,3 +144,6 @@ networks:
   web:
     external: true
     name: web
+
+volumes:
+  mempool-db-data:
