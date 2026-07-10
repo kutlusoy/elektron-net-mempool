@@ -13,6 +13,7 @@ import { HttpErrorResponse } from '@angular/common/http';
 import { StratumJob } from '@interfaces/websocket.interface';
 import { WebsocketService } from '@app/services/websocket.service';
 import { MiningService } from '@app/services/mining.service';
+import { isPrintableCoinbaseTag } from '@app/shared/transaction.utils';
 
 interface AccelerationTotal {
   cost: number,
@@ -29,6 +30,7 @@ interface AccelerationTotal {
 export class PoolComponent implements OnInit, OnDestroy {
   @Input() right: number | string = 45;
   @Input() left: number | string = 75;
+  isPrintableCoinbaseTag = isPrintableCoinbaseTag;
 
   gfg = true;
   stratumEnabled = this.stateService.env.STRATUM_ENABLED;

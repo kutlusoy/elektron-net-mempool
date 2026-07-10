@@ -18,6 +18,7 @@ import { SeoService } from '@app/services/seo.service';
 import { seoDescriptionNetwork } from '@app/shared/common.utils';
 import { CpfpInfo } from '@interfaces/node-api.interface';
 import { LiquidUnblinding } from '@components/transaction/liquid-ublinding';
+import { isPrintableCoinbaseTag } from '@app/shared/transaction.utils';
 
 @Component({
   selector: 'app-transaction-preview',
@@ -26,6 +27,7 @@ import { LiquidUnblinding } from '@components/transaction/liquid-ublinding';
   standalone: false,
 })
 export class TransactionPreviewComponent implements OnInit, OnDestroy {
+  isPrintableCoinbaseTag = isPrintableCoinbaseTag;
   network = '';
   tx: Transaction;
   txId: string;

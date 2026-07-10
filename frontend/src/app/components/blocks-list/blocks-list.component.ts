@@ -10,6 +10,7 @@ import { SeoService } from '@app/services/seo.service';
 import { OpenGraphService } from '@app/services/opengraph.service';
 import { seoDescriptionNetwork } from '@app/shared/common.utils';
 import { RelativeUrlPipe } from '@app/shared/pipes/relative-url/relative-url.pipe';
+import { isPrintableCoinbaseTag } from '@app/shared/transaction.utils';
 
 @Component({
   selector: 'app-blocks-list',
@@ -20,6 +21,7 @@ import { RelativeUrlPipe } from '@app/shared/pipes/relative-url/relative-url.pip
 })
 export class BlocksList implements OnInit {
   @Input() widget: boolean = false;
+  isPrintableCoinbaseTag = isPrintableCoinbaseTag;
 
   blocks$: Observable<BlockExtended[]> = undefined;
 

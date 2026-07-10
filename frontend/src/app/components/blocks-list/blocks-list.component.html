@@ -37,11 +37,11 @@
               <a class="clear-link" [routerLink]="['/mining/pool' | relativeUrl, block.extras.pool.slug]">
                 <app-mining-pool [slug]="block.extras.pool.slug" [name]="block.extras.pool.name" [logoStyle]="'width:22px;height:22px;'" [textClass]="'truncate'"></app-mining-pool>
               </a>
-              <span *ngIf="!widget" class="tooltiptext badge bg-secondary scriptmessage">{{ block.extras.coinbaseRaw | hex2ascii }}</span>
+              <span *ngIf="!widget && isPrintableCoinbaseTag(block.extras.coinbaseRaw | hex2ascii)" class="tooltiptext badge bg-secondary scriptmessage">{{ block.extras.coinbaseRaw | hex2ascii }}</span>
             </div>
             <div *ngIf="!indexingAvailable" class="tooltip-custom">
                 <app-mining-pool [slug]="block.extras.pool.slug" [name]="block.extras.pool.name" [logoStyle]="'width:22px;height:22px;'" [textClass]="'truncate'"></app-mining-pool>
-              <span *ngIf="!widget" class="tooltiptext badge bg-secondary scriptmessage">{{ block.extras.coinbaseRaw | hex2ascii }}</span>
+              <span *ngIf="!widget && isPrintableCoinbaseTag(block.extras.coinbaseRaw | hex2ascii)" class="tooltiptext badge bg-secondary scriptmessage">{{ block.extras.coinbaseRaw | hex2ascii }}</span>
             </div>
           </td>
           <td class="timestamp" *ngIf="!widget" [ngClass]="{'widget': widget, 'legacy': !isMempoolModule}">

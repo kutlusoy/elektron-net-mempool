@@ -248,7 +248,7 @@
                     <tbody>
                       <tr>
                         <td class="text-center coinbase">
-                          {{ job.scriptsig | hex2ascii }}
+                          <ng-container *ngIf="isPrintableCoinbaseTag(job.scriptsig | hex2ascii)">{{ job.scriptsig | hex2ascii }}</ng-container>
                         </td>
                         <td class="text-center clean">
                           @if (job.cleanJobs) {
@@ -338,7 +338,7 @@
             <app-time kind="since" [time]="block.timestamp" [fastRender]="true" [showTooltip]="true"></app-time>
           </td>
           <td class="coinbase">
-            <span class="badge bg-secondary scriptmessage longer">
+            <span *ngIf="isPrintableCoinbaseTag(block.extras.coinbaseRaw | hex2ascii)" class="badge bg-secondary scriptmessage longer">
               {{ block.extras.coinbaseRaw | hex2ascii }}
             </span>
           </td>
