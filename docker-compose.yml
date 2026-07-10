@@ -92,6 +92,13 @@ services:
       # fine for a few hundred blocks, but 11,000 of them was slow enough to
       # time out and get stuck retrying.
       MEMPOOL_INDEXING_BLOCKS_AMOUNT: "1000"
+      # Our own mining pool list instead of Bitcoin's (mempool/mining-pools):
+      # PPLNS pools are identified by their fixed payout address; anything
+      # unmatched (solo pool software, direct CPU miners) falls back to the
+      # "Solo Pool Miner" label, since a pool identifier can't be embedded in
+      # the coinbase scriptSig without breaking the UTXO attestation.
+      MEMPOOL_POOLS_JSON_URL: "https://raw.githubusercontent.com/kutlusoy/elektron-net-mempool/elektron-adopt/pools-v2.json"
+      MEMPOOL_POOLS_JSON_TREE_URL: "https://api.github.com/repos/kutlusoy/elektron-net-mempool/git/trees/elektron-adopt"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:

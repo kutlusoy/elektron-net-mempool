@@ -20,10 +20,10 @@ class PoolsRepository {
    * @asyncUnsafe
    */
   public async $getUnknownPool(): Promise<PoolTag> {
-    let [rows]: any[] = await DB.query('SELECT id, unique_id as uniqueId, name, slug FROM pools where name = "Unknown"');
+    let [rows]: any[] = await DB.query('SELECT id, unique_id as uniqueId, name, slug FROM pools where slug = "unknown"');
     if (rows && rows.length === 0 && config.DATABASE.ENABLED) {
       await poolsParser.$insertUnknownPool();
-      [rows] = await DB.query('SELECT id, unique_id as uniqueId, name, slug FROM pools where name = "Unknown"');
+      [rows] = await DB.query('SELECT id, unique_id as uniqueId, name, slug FROM pools where slug = "unknown"');
     }
     return <PoolTag>rows[0];
   }

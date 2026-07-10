@@ -14,7 +14,10 @@ class PoolsParser {
   miningPools: any[] = [];
   unknownPool: any = {
     'id': 0,
-    'name': 'Unknown',
+    // Elektron Net's UTXO attestation rule forbids any scriptSig byte beyond the
+    // fixed coinbase template, so solo miners can't be tagged in the coinbase
+    // either - this label covers both solo pool software and direct CPU miners.
+    'name': 'Solo Pool Miner',
     'link': 'https://learnmeabitcoin.com/technical/coinbase-transaction',
     'regexes': '[]',
     'addresses': '[]',
@@ -168,7 +171,7 @@ class PoolsParser {
     }
 
     try {
-      const [rows]: any[] = await DB.query({ sql: 'SELECT name from pools where name="Unknown"', timeout: 120000 });
+      const [rows]: any[] = await DB.query({ sql: `SELECT name from pools where slug="${this.unknownPool.slug}"`, timeout: 120000 });
       if (rows.length === 0) {
         await DB.query({
           sql: `INSERT INTO pools(name, link, regexes, addresses, slug, unique_id)
@@ -184,7 +187,7 @@ class PoolsParser {
         `);
       }
     } catch (e) {
-      logger.err(`Unable to insert or update "Unknown" mining pool. Reason: ${e instanceof Error ? e.message : e}`);
+      logger.err(`Unable to insert or update "${this.unknownPool.name}" mining pool. Reason: ${e instanceof Error ? e.message : e}`);
     }
   }
 
