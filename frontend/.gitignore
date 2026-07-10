@@ -63,6 +63,12 @@ src/resources/assets-testnet.json
 src/resources/assets-testnet.minimal.json
 src/resources/pools.json
 src/resources/mining-pools/*
+# Committed on purpose: SKIP_SYNC=1 (see docker/frontend/Dockerfile) means
+# sync-assets.js never fetches Bitcoin's mining-pool-logos repo, so every
+# pool (including our own PPLNS pool and "Solo Pool Miner") would otherwise
+# show a broken image instead of falling back to this generic icon.
+!src/resources/mining-pools/default.svg
+!src/resources/mining-pools/default.light.svg
 src/resources/**/*.mp4
 src/resources/**/*.vtt
 src/resources/customize.js
