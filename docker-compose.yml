@@ -25,11 +25,18 @@ services:
       - backend
     environment:
       MEMPOOL_NETWORK: "mainnet"
+      # "none" = Core-RPC-only mode (current test setup, no address lookups).
+      # Switch to "electrum" once elektron-net-electrs (sibling repo, not yet built) is running,
+      # and uncomment the elektron-electrs service + its depends_on entry below.
       MEMPOOL_BACKEND: "none"
       CORE_RPC_HOST: "host.docker.internal"
       CORE_RPC_PORT: "8332"
       CORE_RPC_USERNAME: "elektron"
       CORE_RPC_PASSWORD: "elektron"
+      # Pre-wired for elektron-net-electrs; inert while MEMPOOL_BACKEND is "none".
+      ELECTRUM_HOST: "elektron-electrs"
+      ELECTRUM_PORT: "50002"
+      ELECTRUM_TLS_ENABLED: "false"
       DATABASE_ENABLED: "true"
       DATABASE_HOST: "elektron-mempool-db"
       DATABASE_DATABASE: "mempool"
@@ -63,6 +70,31 @@ services:
       SERVICES_API: ""
     ports:
       - "8080:8080"
+
+  # Not yet built - placeholder for the future elektron-net-electrs Electrum server
+  # (sibling repo, cloned alongside this one). Once it exists:
+  #   1. build this repo: `cd ../elektron-net-electrs && docker build -t elektron-electrs .`
+  #      (or add a `build: context: ../elektron-net-electrs` block here instead of `image:`)
+  #   2. set MEMPOOL_BACKEND to "electrum" on elektron-mempool-api above
+  #   3. add "elektron-electrs" to elektron-mempool-api's depends_on
+  #   4. run with: docker compose --profile electrs up
+  elektron-electrs:
+    container_name: elektron-electrs
+    image: elektron-electrs
+    profiles:
+      - electrs
+    restart: unless-stopped
+    networks:
+      - backend
+    environment:
+      DAEMON_RPC_ADDR: "host.docker.internal:8332"
+      DAEMON_RPC_USERNAME: "elektron"
+      DAEMON_RPC_PASSWORD: "elektron"
+      ELECTRUM_RPC_ADDR: "0.0.0.0:50002"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./data/electrs:/data
 
 networks:
   backend:
