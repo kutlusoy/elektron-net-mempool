@@ -1,3 +1,9 @@
 # ignore all differences in line endings
 package.json eol=crlf -crlf
 */package.json eol=crlf -crlf
+
+# Force LF for scripts executed inside Linux containers, regardless of the
+# local core.autocrlf setting - a CRLF checkout (e.g. on Windows) breaks them
+# with `$'\r': command not found` errors when bash runs them.
+*.sh text eol=lf
+docker/frontend/wait-for text eol=lf
