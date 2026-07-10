@@ -7,3 +7,15 @@ frontend/src/resources/config.template.js
 frontend/src/resources/config.js
 target
 docker/backend/start_ci.sh
+
+# Files staged into backend/ and frontend/ by elektron-mempool-init
+# (docker compose run --rm elektron-mempool-init) before building.
+backend/Dockerfile
+backend/start.sh
+backend/wait-for-it.sh
+frontend/Dockerfile
+frontend/entrypoint.sh
+frontend/wait-for
+frontend/nginx.conf
+frontend/http-basic.conf
+frontend/nginx-mempool.conf
