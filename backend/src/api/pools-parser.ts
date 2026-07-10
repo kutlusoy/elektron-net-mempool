@@ -18,7 +18,7 @@ class PoolsParser {
     // fixed coinbase template, so solo miners can't be tagged in the coinbase
     // either - this label covers both solo pool software and direct CPU miners.
     'name': 'Solo Pool Miner',
-    'link': 'https://learnmeabitcoin.com/technical/coinbase-transaction',
+    'link': 'https://github.com/kutlusoy/elektron-net-pool',
     'regexes': '[]',
     'addresses': '[]',
     'slug': 'unknown'
