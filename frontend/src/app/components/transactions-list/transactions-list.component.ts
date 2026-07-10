@@ -15,7 +15,7 @@ import { OrdApiService } from '@app/services/ord-api.service';
 import { Inscription } from '@app/shared/ord/inscription.utils';
 import { Etching, Runestone } from '@app/shared/ord/rune.utils';
 import { ADDRESS_SIMILARITY_THRESHOLD, AddressMatch, AddressSimilarity, AddressType, AddressTypeInfo, checkedCompareAddressStrings, detectAddressType } from '@app/shared/address-utils';
-import { processInputSignatures, Sighash, SigInfo, SighashLabels, parseTaproot } from '@app/shared/transaction.utils';
+import { processInputSignatures, Sighash, SigInfo, SighashLabels, parseTaproot, getCoinbaseOpReturnLabel } from '@app/shared/transaction.utils';
 import { ActivatedRoute } from '@angular/router';
 import { SighashFlag } from '@app/shared/transaction.utils';
 
@@ -31,6 +31,7 @@ export class TransactionsListComponent implements OnInit, OnChanges, OnDestroy {
   nativeAssetId = this.stateService.network === 'liquidtestnet' ? environment.nativeTestAssetId : environment.nativeAssetId;
   isLiquid = this.stateService.network === 'liquid' || this.stateService.network === 'liquidtestnet';
   showMoreIncrement = 1000;
+  getCoinbaseOpReturnLabel = getCoinbaseOpReturnLabel;
 
   @Input() transactions: Transaction[];
   @Input() cached: boolean = false;
