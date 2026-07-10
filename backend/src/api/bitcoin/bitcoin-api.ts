@@ -36,14 +36,20 @@ class BitcoinApi implements AbstractBitcoinApi {
   }
 
 
-  $getRawTransaction(txId: string, skipConversion = false, addPrevout = false, lazyPrevouts = false): Promise<IEsploraApi.Transaction> {
+  $getRawTransaction(txId: string, skipConversion = false, addPrevout = false, lazyPrevouts = false, blockHash?: string): Promise<IEsploraApi.Transaction> {
     // If the transaction is in the mempool we already converted and fetched the fee. Only prevouts are missing
     const txInMempool = mempool.getMempool()[txId];
     if (txInMempool && addPrevout) {
       return this.$addPrevouts(txInMempool);
     }
 
-    return this.bitcoindClient.getRawTransaction(txId, true)
+    // Passing blockHash lets bitcoind look up the tx directly in that block,
+    // without needing -txindex (which pruned nodes can't run).
+    const rawTransactionPromise = blockHash
+      ? this.bitcoindClient.getRawTransaction(txId, true, blockHash)
+      : this.bitcoindClient.getRawTransaction(txId, true);
+
+    return rawTransactionPromise
       .then((transaction: IBitcoinApi.Transaction) => {
         if (skipConversion) {
           transaction.vout.forEach((vout) => {

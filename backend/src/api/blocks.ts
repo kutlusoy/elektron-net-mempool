@@ -130,7 +130,7 @@ class Blocks {
 
     if (onlyCoinbase) {
       try {
-        const coinbase = await transactionUtils.$getTransactionExtendedRetry(txIds[0], false, false, false, addMempoolData);
+        const coinbase = await transactionUtils.$getTransactionExtendedRetry(txIds[0], false, false, false, addMempoolData, blockHash);
         if (coinbase && coinbase.vin[0].is_coinbase) {
           return [coinbase];
         } else {
@@ -169,7 +169,7 @@ class Blocks {
         logger.debug(`Indexing tx ${totalFound + 1} of ${txIds.length} in block #${blockHeight}`);
       }
       try {
-        const tx = await transactionUtils.$getTransactionExtendedRetry(txid, false, false, false, addMempoolData);
+        const tx = await transactionUtils.$getTransactionExtendedRetry(txid, false, false, false, addMempoolData, blockHash);
         transactionMap[txid] = tx;
         totalFound++;
       } catch (e) {
