@@ -31,8 +31,8 @@ services:
       MEMPOOL_BACKEND: "none"
       CORE_RPC_HOST: "host.docker.internal"
       CORE_RPC_PORT: "8332"
-      CORE_RPC_USERNAME: "elektron"
-      CORE_RPC_PASSWORD: "elektron"
+      CORE_RPC_USERNAME: "elek"
+      CORE_RPC_PASSWORD: "pass"
       # Pre-wired for elektron-net-electrs; inert while MEMPOOL_BACKEND is "none".
       ELECTRUM_HOST: "elektron-electrs"
       ELECTRUM_PORT: "50002"
@@ -88,8 +88,8 @@ services:
       - backend
     environment:
       DAEMON_RPC_ADDR: "host.docker.internal:8332"
-      DAEMON_RPC_USERNAME: "elektron"
-      DAEMON_RPC_PASSWORD: "elektron"
+      DAEMON_RPC_USERNAME: "elek"
+      DAEMON_RPC_PASSWORD: "pass"
       ELECTRUM_RPC_ADDR: "0.0.0.0:50002"
     extra_hosts:
       - "host.docker.internal:host-gateway"
