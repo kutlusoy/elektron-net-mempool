@@ -22,7 +22,7 @@
     "EXTERNAL_ASSETS": [],
     "EXTERNAL_MAX_RETRY": 1,
     "EXTERNAL_RETRY_INTERVAL": 0,
-    "USER_AGENT": "mempool",
+    "USER_AGENT": "elektron-mempool",
     "STDOUT_LOG_MIN_PRIORITY": "debug",
     "AUTOMATIC_POOLS_UPDATE": false,
     "POOLS_JSON_URL": "https://raw.githubusercontent.com/mempool/mining-pools/master/pools-v2.json",
@@ -48,8 +48,8 @@
     "PASSWORD": "mempool",
     "TIMEOUT": 60000,
     "COOKIE": false,
-    "COOKIE_PATH": "/path/to/bitcoin/.cookie",
-    "DEBUG_LOG_PATH": "/path/to/bitcoin/debug.log"
+    "COOKIE_PATH": "/path/to/elektron/.cookie",
+    "DEBUG_LOG_PATH": "/path/to/elektron/debug.log"
   },
   "ELECTRUM": {
     "HOST": "127.0.0.1",
@@ -162,7 +162,7 @@
     "API": "http://localhost:1234"
   },
   "FIAT_PRICE": {
-    "ENABLED": true,
+    "ENABLED": false,
     "PAID": false,
     "API_KEY": "your-api-key-from-freecurrencyapi.com"
   }

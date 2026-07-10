@@ -39,11 +39,11 @@ const ADDRESS_CHARS: {
       // Version byte 0x00 (P2PKH) can be as short as 27 characters, up to 34 length
       // P2SH must be 34 length
     bech32: `(?:`
-        + `bc1` // Starts with bc1
+        + `be1` // Starts with be1 (Elektron Net mainnet bech32 HRP)
         + BECH32_CHARS_LW
         + `{6,100}` // As per bech32, 6 char checksum is minimum
       + `|`
-        + `BC1` // All upper case version
+        + `BE1` // All upper case version
         + BECH32_CHARS_UP
         + `{6,100}`
       + `)`,

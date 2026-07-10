@@ -84,14 +84,14 @@ export class TreasuriesSupplyComponent implements OnInit, OnDestroy {
   }
 
   processSupplyShares(): void {
-    const total = 20999999.9769;
+    const total = 21000000;
 
     // calculate total mined based on block height & subsidy schedule
     let mined = 0;
-    for (let i = 0; i < this.currentHeight; i += 210000) {
-      const subsidy = 50 / Math.pow(2, Math.floor(i / 210000));
-      if ((i + 210000) <= this.currentHeight) {
-        mined += subsidy * 210000;
+    for (let i = 0; i < this.currentHeight; i += 2102400) {
+      const subsidy = 5 / Math.pow(2, Math.floor(i / 2102400));
+      if ((i + 2102400) <= this.currentHeight) {
+        mined += subsidy * 2102400;
       } else {
         mined += subsidy * (this.currentHeight - i);
       }

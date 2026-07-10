@@ -234,93 +234,83 @@ export const languages: Language[] = [
 export const specialBlocks = {
   '0': {
     labelEvent: 'Genesis',
-    labelEventCompleted: 'The Genesis of Bitcoin',
+    labelEventCompleted: 'The Genesis of Elektron Net',
     networks: ['mainnet', 'testnet', 'testnet4'],
   },
-  '210000': {
-    labelEvent: 'Bitcoin\'s 1st Halving',
-    labelEventCompleted: 'Block Subsidy has halved to 25 BTC per block',
+  '2102400': {
+    labelEvent: "Elektron Net's 1st Halving",
+    labelEventCompleted: 'Block Subsidy has halved to 2.5 ELEK per block',
     networks: ['mainnet', 'testnet', 'testnet4'],
   },
-  '420000': {
-    labelEvent: 'Bitcoin\'s 2nd Halving',
-    labelEventCompleted: 'Block Subsidy has halved to 12.5 BTC per block',
+  '4204800': {
+    labelEvent: "Elektron Net's 2nd Halving",
+    labelEventCompleted: 'Block Subsidy has halved to 1.25 ELEK per block',
     networks: ['mainnet', 'testnet', 'testnet4'],
   },
-  '630000': {
-    labelEvent: 'Bitcoin\'s 3rd Halving',
-    labelEventCompleted: 'Block Subsidy has halved to 6.25 BTC per block',
+  '6307200': {
+    labelEvent: "Elektron Net's 3rd Halving",
+    labelEventCompleted: 'Block Subsidy has halved to 0.625 ELEK per block',
     networks: ['mainnet', 'testnet', 'testnet4'],
   },
-  '709632': {
-    labelEvent: 'Taproot 🌱 activation',
-    labelEventCompleted: 'Taproot 🌱 has been activated!',
-    networks: ['mainnet'],
-  },
-  '840000': {
-    labelEvent: 'Bitcoin\'s 4th Halving',
-    labelEventCompleted: 'Block Subsidy has halved to 3.125 BTC per block',
+  '8409600': {
+    labelEvent: "Elektron Net's 4th Halving",
+    labelEventCompleted: 'Block Subsidy has halved to 0.3125 ELEK per block',
     networks: ['mainnet', 'testnet', 'testnet4'],
   },
-  '1050000': {
-    labelEvent: 'Bitcoin\'s 5th Halving',
-    labelEventCompleted: 'Block Subsidy has halved to 1.5625 BTC per block',
+  '10512000': {
+    labelEvent: "Elektron Net's 5th Halving",
+    labelEventCompleted: 'Block Subsidy has halved to 0.15625 ELEK per block',
     networks: ['mainnet', 'testnet', 'testnet4'],
   },
-  '1260000': {
-    labelEvent: 'Bitcoin\'s 6th Halving',
-    labelEventCompleted: 'Block Subsidy has halved to 0.78125 BTC per block',
+  '12614400': {
+    labelEvent: "Elektron Net's 6th Halving",
+    labelEventCompleted: 'Block Subsidy has halved to 0.078125 ELEK per block',
     networks: ['mainnet', 'testnet', 'testnet4'],
   },
-  '1470000': {
-    labelEvent: 'Bitcoin\'s 7th Halving',
-    labelEventCompleted: 'Block Subsidy has halved to 0.390625 BTC per block',
+  '14716800': {
+    labelEvent: "Elektron Net's 7th Halving",
+    labelEventCompleted: 'Block Subsidy has halved to 0.0390625 ELEK per block',
     networks: ['mainnet', 'testnet', 'testnet4'],
   },
-  '1680000': {
-    labelEvent: 'Bitcoin\'s 8th Halving',
-    labelEventCompleted: 'Block Subsidy has halved to 0.1953125 BTC per block',
+  '16819200': {
+    labelEvent: "Elektron Net's 8th Halving",
+    labelEventCompleted: 'Block Subsidy has halved to 0.01953125 ELEK per block',
     networks: ['mainnet', 'testnet', 'testnet4'],
   },
-  '1890000': {
-    labelEvent: 'Bitcoin\'s 9th Halving',
-    labelEventCompleted: 'Block Subsidy has halved to 0.09765625 BTC per block',
+  '18921600': {
+    labelEvent: "Elektron Net's 9th Halving",
+    labelEventCompleted: 'Block Subsidy has halved to 0.00976562 ELEK per block',
     networks: ['mainnet', 'testnet', 'testnet4'],
   },
-  '2100000': {
-    labelEvent: 'Bitcoin\'s 10th Halving',
-    labelEventCompleted: 'Block Subsidy has halved to 0.04882812 BTC per block',
+  '21024000': {
+    labelEvent: "Elektron Net's 10th Halving",
+    labelEventCompleted: 'Block Subsidy has halved to 0.00488281 ELEK per block',
     networks: ['mainnet', 'testnet', 'testnet4'],
   },
-  '2310000': {
-    labelEvent: 'Bitcoin\'s 11th Halving',
-    labelEventCompleted: 'Block Subsidy has halved to 0.02441406 BTC per block',
+  '23126400': {
+    labelEvent: "Elektron Net's 11th Halving",
+    labelEventCompleted: 'Block Subsidy has halved to 0.0024414 ELEK per block',
     networks: ['mainnet', 'testnet', 'testnet4'],
   },
-  '2520000': {
-    labelEvent: 'Bitcoin\'s 12th Halving',
-    labelEventCompleted: 'Block Subsidy has halved to 0.01220703 BTC per block',
+  '25228800': {
+    labelEvent: "Elektron Net's 12th Halving",
+    labelEventCompleted: 'Block Subsidy has halved to 0.0012207 ELEK per block',
     networks: ['mainnet', 'testnet', 'testnet4'],
   },
-  '2730000': {
-    labelEvent: 'Bitcoin\'s 13th Halving',
-    labelEventCompleted: 'Block Subsidy has halved to 0.00610351 BTC per block',
+  '27331200': {
+    labelEvent: "Elektron Net's 13th Halving",
+    labelEventCompleted: 'Block Subsidy has halved to 0.00061035 ELEK per block',
     networks: ['mainnet', 'testnet', 'testnet4'],
   },
-  '2940000': {
-    labelEvent: 'Bitcoin\'s 14th Halving',
-    labelEventCompleted: 'Block Subsidy has halved to 0.00305175 BTC per block',
+  '29433600': {
+    labelEvent: "Elektron Net's 14th Halving",
+    labelEventCompleted: 'Block Subsidy has halved to 0.00030517 ELEK per block',
     networks: ['mainnet', 'testnet', 'testnet4'],
   },
-  '3150000': {
-    labelEvent: 'Bitcoin\'s 15th Halving',
-    labelEventCompleted: 'Block Subsidy has halved to 0.00152587 BTC per block',
+  '31536000': {
+    labelEvent: "Elektron Net's 15th Halving",
+    labelEventCompleted: 'Block Subsidy has halved to 0.00015258 ELEK per block',
     networks: ['mainnet', 'testnet', 'testnet4'],
-  },
-  '3477600': {
-    labelEvent: 'Simplicity activation',
-    labelEventCompleted: 'Simplicity has been activated!',
-    networks: ['liquid'],
   },
 };
 

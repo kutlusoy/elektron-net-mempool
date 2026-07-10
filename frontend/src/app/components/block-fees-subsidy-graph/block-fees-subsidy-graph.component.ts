@@ -485,7 +485,7 @@ export class BlockFeesSubsidyGraphComponent implements OnInit {
   }
 
   initSubsidies(): { [key: number]: number } {
-    let blockReward = 50 * 100_000_000;
+    let blockReward = 5 * 100_000_000;
     const subsidies = {};
     for (let i = 0; i <= 33; i++) {
       subsidies[i] = blockReward;
@@ -495,7 +495,7 @@ export class BlockFeesSubsidyGraphComponent implements OnInit {
   }
 
   subsidyAt(height: number): number {
-    return this.subsidies[Math.floor(Math.min(height / 210000, 33))];
+    return this.subsidies[Math.floor(Math.min(height / 2102400, 33))];
   }
 
   onZoom() {

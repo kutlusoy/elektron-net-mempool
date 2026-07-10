@@ -33,13 +33,13 @@
         </div>
 
         <div class="input-group input-group-lg mb-1">
-          <span class="input-group-text">BTC</span>
+          <span class="input-group-text">ELEK</span>
           <input type="text" inputmode="decimal" class="form-control" formControlName="bitcoin" (input)="transformInput('bitcoin')" (click)="selectAll($event)">
           <app-clipboard [button]="true" [text]="form.get('bitcoin').value" [class]="'btn btn-lg btn-secondary ms-1'"></app-clipboard>
         </div>
 
         <div class="input-group input-group-lg mb-1">
-          <span class="input-group-text" i18n="shared.sats">sats</span>
+          <span class="input-group-text" i18n="shared.sats">lep</span>
           <input type="text" inputmode="numeric" class="form-control" formControlName="satoshis" (input)="transformInput('satoshis')" (click)="selectAll($event)">
           <app-clipboard [button]="true" [text]="form.get('satoshis').value" [class]="'btn btn-lg btn-secondary ms-1'"></app-clipboard>
         </div>
@@ -48,7 +48,7 @@
 
     <div class="row justify-content-center mt-3" *ngIf="isMaxSupply">
       <div class="alert alert-warning" role="alert" i18n="calculator.max-supply-warning|Max supply warning message">
-        Values were capped at the max supply of 21M BTC
+        Values were capped at the max supply of 21M ELEK
       </div>
     </div>
 
@@ -56,9 +56,9 @@
 
     <div class="row calculator-inline-row justify-content-center">
       <div class="bitcoin-satoshis-text">
-        ₿
-         <span [innerHTML]="form.get('bitcoin').value | bitcoinsatoshis"></span> 
-        <span class="sats" i18n="shared.sats">sats</span>
+        ELEK
+         <span [innerHTML]="form.get('bitcoin').value | bitcoinsatoshis"></span>
+        <span class="sats" i18n="shared.sats">lep</span>
       </div>
     </div>
 
