@@ -3,6 +3,10 @@ FROM node:24.13-bookworm-slim AS builder
 ARG commitHash
 ENV DOCKER_COMMIT_HASH=${commitHash}
 ENV CYPRESS_INSTALL_BINARY=0
+# Skip syncing upstream's Bitcoin mining pool logos and mempool.space promo
+# video/subtitles: irrelevant to Elektron Net (we ship our own pools-v2.json),
+# and an unreliable external dependency to have in the build at all.
+ENV SKIP_SYNC=1
 
 WORKDIR /build
 COPY . .
