@@ -46,7 +46,12 @@ class PoolsParser {
 
     await this.$insertUnknownPool();
 
-    let reindexUnknown = false;
+    // Always re-check Solo Pool Miner-tagged blocks against the current pool
+    // list, not only when a pool's own record changed this run: our pool
+    // list is small and updated manually, so a block can easily get mined
+    // and indexed before its pool's address is added. Cheap for our indexed
+    // window size (MEMPOOL_INDEXING_BLOCKS_AMOUNT).
+    let reindexUnknown = true;
     let clearCache = false;
 
 
@@ -198,12 +203,12 @@ class PoolsParser {
    * @asyncUnsafe
    */
   private async $reindexBlocksForPool(poolId: number): Promise<void> {
-    let firstKnownBlockPool = 130635; // https://mempool.space/block/0000000000000a067d94ff753eec72830f1205ad3a4c216a08a80c832e551a52
-    if (config.MEMPOOL.NETWORK === 'testnet') {
-      firstKnownBlockPool = 21106; // https://mempool.space/testnet/block/0000000070b701a5b6a1b965f6a38e0472e70b2bb31b973e4638dec400877581
-    } else if (['signet', 'testnet4', 'regtest'].includes(config.MEMPOOL.NETWORK)) {
-      firstKnownBlockPool = 0;
-    }
+    // Upstream hardcodes this to the block height where Bitcoin's own pool
+    // tracking historically began (130635 on mainnet). That height doesn't
+    // exist on Elektron Net's much younger chain, so it would silently skip
+    // reassigning every block. Elektron Net has no such history - reindex
+    // from genesis.
+    const firstKnownBlockPool = 0;
 
     const [blocks]: any[] = await DB.query(`
       SELECT height, hash, coinbase_raw, coinbase_addresses
