@@ -88,9 +88,9 @@ export function calcDifficultyAdjustment(
   network: string,
   latestBlockTimestamp: number,
 ): DifficultyAdjustment {
-  const EPOCH_BLOCK_LENGTH = 2016; // Bitcoin mainnet
-  const BLOCK_SECONDS_TARGET = 600; // Bitcoin mainnet
-  const TESTNET_MAX_BLOCK_SECONDS = 1200; // Bitcoin testnet
+  const EPOCH_BLOCK_LENGTH = 2016; // Elektron Net mainnet (same block count as Bitcoin, shorter retarget window)
+  const BLOCK_SECONDS_TARGET = 60; // Elektron Net mainnet
+  const TESTNET_MAX_BLOCK_SECONDS = 120; // Elektron Net testnet (2x block target, same rule as Bitcoin testnet)
 
   const diffSeconds = Math.max(0, nowSeconds - DATime);
   const blocksInEpoch = (blockHeight >= 0) ? blockHeight % EPOCH_BLOCK_LENGTH : 0;

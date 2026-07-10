@@ -53,7 +53,7 @@ export class QrcodeComponent implements AfterViewInit {
 
     const address = this.data;
     if (
-      this.data.indexOf('bc1') === 0 ||
+      this.data.indexOf('be1') === 0 ||
       this.data.indexOf('tb1') === 0 ||
       this.data.indexOf('bcrt1') === 0
     ) {

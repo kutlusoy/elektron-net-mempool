@@ -205,12 +205,12 @@ export function renderSats(value: number, network: string, mode: 'sats' | 'btc' 
       break;
   }
   if (mode === 'btc' || (mode === 'auto' && value >= 1000000)) {
-    return `${amountShortenerPipe.transform(value / 100000000, 2)} ${prefix}BTC`;
+    return `${amountShortenerPipe.transform(value / 100000000, 2)} ${prefix}ELEK`;
   } else {
     if (prefix.length) {
       prefix += '-';
     }
-    return `${amountShortenerPipe.transform(value, 2)} ${prefix}sats`;
+    return `${amountShortenerPipe.transform(value, 2)} ${prefix}lep`;
   }
 }
 

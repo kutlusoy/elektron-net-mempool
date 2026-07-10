@@ -1,23 +1,21 @@
 {
-  "name": "mempool-backend",
-  "version": "3.4-dev",
-  "description": "Bitcoin mempool visualizer and blockchain explorer backend",
+  "name": "elektron-mempool-backend",
+  "version": "4.0.0",
+  "description": "Elektron Net mempool visualizer and blockchain explorer backend",
   "license": "GNU Affero General Public License v3.0",
-  "homepage": "https://mempool.space",
+  "homepage": "https://mempool.elektron-net.org",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/mempool/mempool"
+    "url": "git+https://github.com/kutlusoy/elektron-net-mempool"
   },
   "bugs": {
-    "url": "https://github.com/mempool/mempool/issues"
+    "url": "https://github.com/kutlusoy/elektron-net-mempool/issues"
   },
   "keywords": [
-    "bitcoin",
+    "elektron",
     "mempool",
     "blockchain",
-    "explorer",
-    "liquid",
-    "lightning"
+    "explorer"
   ],
   "main": "index.ts",
   "scripts": {

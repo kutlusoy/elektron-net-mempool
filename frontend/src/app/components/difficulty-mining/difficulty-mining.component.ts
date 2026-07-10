@@ -70,8 +70,8 @@ export class DifficultyMiningComponent implements OnInit {
           colorPreviousAdjustments = 'var(--transparent-fg)';
         }
 
-        this.blocksUntilHalving = 210000 - (maxHeight % 210000);
-        this.timeUntilHalving = new Date().getTime() + (this.blocksUntilHalving * 600000);
+        this.blocksUntilHalving = 2102400 - (maxHeight % 2102400);
+        this.timeUntilHalving = new Date().getTime() + (this.blocksUntilHalving * 60000);
         this.now = new Date().getTime();
 
         const data = {

@@ -103,8 +103,8 @@ export class DifficultyComponent implements OnInit {
           colorPreviousAdjustments = 'var(--transparent-fg)';
         }
 
-        const blocksUntilHalving = 210000 - (maxHeight % 210000);
-        const timeUntilHalving = new Date().getTime() + (blocksUntilHalving * 600000);
+        const blocksUntilHalving = 2102400 - (maxHeight % 2102400);
+        const timeUntilHalving = new Date().getTime() + (blocksUntilHalving * 60000);
         const newEpochStart = Math.floor(this.stateService.latestBlockHeight / EPOCH_BLOCK_LENGTH) * EPOCH_BLOCK_LENGTH;
         const newExpectedHeight = Math.floor(newEpochStart + da.expectedBlocks);
         this.now = new Date().getTime();
@@ -238,14 +238,14 @@ export class DifficultyComponent implements OnInit {
 }
 
 function getNextBlockSubsidy(height: number): number {
-  const halvings = Math.floor(height / 210_000) + 1;
+  const halvings = Math.floor(height / 2_102_400) + 1;
   // Force block reward to zero when right shift is undefined.
   if (halvings >= 64) {
     return 0;
   }
 
-  let subsidy = BigInt(50 * 100_000_000);
-  // Subsidy is cut in half every 210,000 blocks which will occur approximately every 4 years.
+  let subsidy = BigInt(5 * 100_000_000);
+  // Subsidy is cut in half every 2,102,400 blocks which will occur approximately every 4 years.
   subsidy >>= BigInt(halvings);
   return Number(subsidy);
 }

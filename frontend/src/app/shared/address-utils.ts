@@ -27,7 +27,8 @@ const ADDRESS_PREFIXES = {
       pubkey: ['1'],
       script: ['3'],
     },
-    bech32: 'bc1',
+    // Elektron Net mainnet bech32 HRP is "be" (base58 prefixes are identical to Bitcoin mainnet)
+    bech32: 'be1',
   },
   testnet: {
     base58: {
