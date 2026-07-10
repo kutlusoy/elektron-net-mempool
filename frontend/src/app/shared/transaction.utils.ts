@@ -2935,3 +2935,30 @@ export function fillTapTree(addressTypeInfo: AddressTypeInfo, leaves: TapLeaf[])
 function isInternalKeyNUMS(internalKey: string): boolean {
   return internalKey === TAPROOT_NUMS_INTERNAL_KEY;
 }
+
+const WITNESS_COMMITMENT_HEADER = 'aa21a9ed';
+
+/**
+ * Labels the two mandatory OP_RETURN outputs found in every Elektron Net
+ * coinbase transaction: the standard BIP141 witness commitment, and
+ * Elektron Net's own UTXO-set attestation (OP_RETURN <height> <32-byte hash>).
+ * Both would otherwise render as unreadable raw bytes via hex2ascii.
+ */
+export function getCoinbaseOpReturnLabel(scriptpubkeyAsm: string, isCoinbase: boolean): string | null {
+  if (!isCoinbase || !scriptpubkeyAsm) {
+    return null;
+  }
+  const parts = scriptpubkeyAsm.split(' ');
+  if (parts[0] !== 'OP_RETURN' || parts.length < 3) {
+    return null;
+  }
+  const last = parts[parts.length - 1];
+  const secondLast = parts[parts.length - 2];
+  if (parts.length === 3 && secondLast === 'OP_PUSHBYTES_36' && last.length === 72 && last.toLowerCase().startsWith(WITNESS_COMMITMENT_HEADER)) {
+    return 'Witness Commitment';
+  }
+  if (secondLast === 'OP_PUSHBYTES_32' && last.length === 64) {
+    return 'UTXO Attestation';
+  }
+  return null;
+}
