@@ -67,7 +67,7 @@
         (mouseenter)="onChunkEnter(outline.chunkIndex)"
         (mouseleave)="onChunkLeave()"
         (click)="onChunkClick(outline.chunkIndex, $event)">
-        {{ outline.feerate | feeRounding }} sat/vB
+        {{ outline.feerate | feeRounding }} lep/vB
       </text>
     </ng-container>
 
@@ -145,7 +145,7 @@
         </tr>
         <tr>
           <th i18n="transaction.fee-rate|Transaction fee rate">Fee rate</th>
-          <td>{{ hoverNode.feerate | feeRounding }} <span class="unit">sat/vB</span></td>
+          <td>{{ hoverNode.feerate | feeRounding }} <span class="unit">lep/vB</span></td>
         </tr>
       </table>
       <div class="legend">
@@ -181,7 +181,7 @@
         </tr>
         <tr>
           <th i18n="transaction.fee-rate|Transaction fee rate">Fee rate</th>
-          <td>{{ hoverNode.feerate | feeRounding }} <span class="unit">sat/vB</span></td>
+          <td>{{ hoverNode.feerate | feeRounding }} <span class="unit">lep/vB</span></td>
         </tr>
       </table>
       <div class="legend">
