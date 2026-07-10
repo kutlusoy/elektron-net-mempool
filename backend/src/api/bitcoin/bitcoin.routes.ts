@@ -312,7 +312,7 @@ class BitcoinRoutes {
       return;
     }
     try {
-      const transaction = await transactionUtils.$getTransactionExtended(req.params.txId, true, false, false, true);
+      const transaction = await transactionUtils.$getTransactionExtendedRetry(req.params.txId, true, false, false, true);
       res.json(transaction);
     } catch (e) {
       let statusCode = 500;
@@ -419,7 +419,7 @@ class BitcoinRoutes {
       return;
     }
     try {
-      const transaction = await transactionUtils.$getTransactionExtended(req.params.txId, true);
+      const transaction = await transactionUtils.$getTransactionExtendedRetry(req.params.txId, true);
       res.json(transaction.status);
     } catch (e) {
       let statusCode = 500;
@@ -700,7 +700,7 @@ class BitcoinRoutes {
       const endIndex = Math.min(startingIndex + 10, txIds.length);
       for (let i = startingIndex; i < endIndex; i++) {
         try {
-          const transaction = await transactionUtils.$getTransactionExtended(txIds[i], true, true);
+          const transaction = await transactionUtils.$getTransactionExtended(txIds[i], true, true, false, false, req.params.hash);
           transactions.push(transaction);
           loadingIndicators.setProgress('blocktxs-' + req.params.hash, (i - startingIndex + 1) / (endIndex - startingIndex) * 100);
         } catch (e) {
