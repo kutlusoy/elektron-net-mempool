@@ -8,7 +8,29 @@ import config from '../config';
 import pLimit from '../utils/p-limit';
 
 class TransactionUtils {
+  // How many recent blocks to scan for a tx when we have no blockhash hint
+  // and no -txindex to fall back on (Elektron Net nodes can't run -txindex,
+  // since pruning is mandatory).
+  private static readonly RECENT_BLOCK_SCAN_DEPTH = 20;
+
   constructor() { }
+
+  private async $findRecentBlockHashForTx(txid: string): Promise<string | undefined> {
+    try {
+      const tipHeight = await bitcoinCoreApi.$getBlockHeightTip();
+      const minHeight = Math.max(0, tipHeight - TransactionUtils.RECENT_BLOCK_SCAN_DEPTH);
+      for (let height = tipHeight; height > minHeight; height--) {
+        const hash = await bitcoinCoreApi.$getBlockHash(height);
+        const txids = await bitcoinCoreApi.$getTxIdsForBlock(hash);
+        if (txids.includes(txid)) {
+          return hash;
+        }
+      }
+    } catch (e) {
+      logger.err(`Failed scanning recent blocks for tx ${txid}. Reason: ` + (e instanceof Error ? e.message : e));
+    }
+    return undefined;
+  }
 
   public stripCoinbaseTransaction(tx: TransactionExtended): TransactionMinerInfo {
     return {
@@ -39,7 +61,20 @@ class TransactionUtils {
       logger.err(`Cannot fetch tx ${txid}. Reason: ` + (e instanceof Error ? e.message : e));
     }
     // retry direct from Core if first request failed
-    return this.$getTransactionExtended(txid, addPrevouts, lazyPrevouts, true, addMempoolData, blockHash);
+    try {
+      return await this.$getTransactionExtended(txid, addPrevouts, lazyPrevouts, true, addMempoolData, blockHash);
+    } catch (e) {
+      // Without -txindex, bitcoind can only find a confirmed tx if we tell it
+      // which block it's in. If we weren't given a hint, scan a bounded
+      // window of recent blocks for it before giving up.
+      if (!blockHash) {
+        const foundBlockHash = await this.$findRecentBlockHashForTx(txid);
+        if (foundBlockHash) {
+          return this.$getTransactionExtended(txid, addPrevouts, lazyPrevouts, true, addMempoolData, foundBlockHash);
+        }
+      }
+      throw e;
+    }
   }
 
   /**
