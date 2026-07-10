@@ -1,4 +1,27 @@
 services:
+  # One-shot staging step required before the first build (and after pulling
+  # upstream changes to docker/, nginx*.conf, or http-basic.conf): copies the
+  # Docker build files into backend/ and frontend/ and patches the nginx
+  # config placeholders, mirroring what upstream's docker/init.sh does in CI.
+  # Run once: `docker compose run --rm elektron-mempool-init`
+  elektron-mempool-init:
+    image: alpine:3
+    volumes:
+      - .:/repo
+    working_dir: /repo
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      set -e &&
+      cp -r ./docker/backend/. ./backend/ &&
+      cp -r ./docker/frontend/. ./frontend/ &&
+      cp ./nginx.conf ./http-basic.conf ./nginx-mempool.conf ./frontend/ &&
+      sed -i -e "s#127.0.0.1:80#0.0.0.0:__MEMPOOL_FRONTEND_HTTP_PORT__#g" ./frontend/nginx.conf &&
+      sed -i -e "s#127.0.0.1#0.0.0.0#g" ./frontend/nginx.conf &&
+      sed -i -e "s#user nobody;##g" ./frontend/nginx.conf &&
+      sed -i -e "s#/etc/nginx/nginx-mempool.conf#/etc/nginx/conf.d/nginx-mempool.conf#g" ./frontend/nginx.conf &&
+      sed -i -e "s#127.0.0.1:8999#__MEMPOOL_BACKEND_MAINNET_HTTP_HOST__:__MEMPOOL_BACKEND_MAINNET_HTTP_PORT__#g" ./frontend/nginx-mempool.conf &&
+      echo "init done"
+
   elektron-mempool-db:
     container_name: elektron-mempool-db
     image: mariadb:11
@@ -16,8 +39,14 @@ services:
   elektron-mempool-api:
     container_name: elektron-mempool-api
     build:
+      # Requires `docker compose run --rm elektron-mempool-init` first (stages
+      # backend/Dockerfile, backend/mempool-config.json, backend/start.sh, etc.)
       context: ./backend
-      dockerfile: ../docker/backend/Dockerfile
+      additional_contexts:
+        - "backend=./backend"
+        - "rustgbt=./rust"
+      args:
+        commitHash: "local"
     restart: unless-stopped
     depends_on:
       - elektron-mempool-db
@@ -52,8 +81,11 @@ services:
   elektron-mempool-web:
     container_name: elektron-mempool-web
     build:
-      context: .
-      dockerfile: ./docker/frontend/Dockerfile
+      # Requires `docker compose run --rm elektron-mempool-init` first (stages
+      # frontend/Dockerfile, frontend/entrypoint.sh, frontend/nginx*.conf, etc.)
+      context: ./frontend
+      args:
+        commitHash: "local"
     restart: unless-stopped
     depends_on:
       - elektron-mempool-api
