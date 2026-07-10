@@ -7,6 +7,9 @@
     <div style="display:flex" class="mb-3">
       <app-mining-pool [slug]="poolStats.pool.slug" [name]="poolStats.pool.name" [showName]="false" [logoStyle]="'width:50px;height:50px;'" [logoClass]="'me-3'"></app-mining-pool>
       <h1 class="m-0 pt-1 pt-md-0">{{ poolStats.pool.name }}</h1>
+      <a *ngIf="poolStats.pool.link" [href]="poolStats.pool.link" target="_blank" rel="noopener noreferrer" class="ms-2 pt-1 pt-md-0" style="align-self: center;">
+        <fa-icon [icon]="['fas', 'external-link-alt']" [fixedWidth]="true"></fa-icon>
+      </a>
     </div>
 
     <div class="box pool-details">
@@ -248,7 +251,7 @@
                     <tbody>
                       <tr>
                         <td class="text-center coinbase">
-                          {{ job.scriptsig | hex2ascii }}
+                          <ng-container *ngIf="isPrintableCoinbaseTag(job.scriptsig | hex2ascii)">{{ job.scriptsig | hex2ascii }}</ng-container>
                         </td>
                         <td class="text-center clean">
                           @if (job.cleanJobs) {
@@ -338,7 +341,7 @@
             <app-time kind="since" [time]="block.timestamp" [fastRender]="true" [showTooltip]="true"></app-time>
           </td>
           <td class="coinbase">
-            <span class="badge bg-secondary scriptmessage longer">
+            <span *ngIf="isPrintableCoinbaseTag(block.extras.coinbaseRaw | hex2ascii)" class="badge bg-secondary scriptmessage longer">
               {{ block.extras.coinbaseRaw | hex2ascii }}
             </span>
           </td>

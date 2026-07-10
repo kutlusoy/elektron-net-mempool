@@ -2962,3 +2962,15 @@ export function getCoinbaseOpReturnLabel(scriptpubkeyAsm: string, isCoinbase: bo
   }
   return null;
 }
+
+/**
+ * Elektron Net's UTXO attestation forbids any scriptSig byte beyond the fixed
+ * coinbase template, so no pool can embed a text tag there - the bytes are
+ * just the binary height push and extranonce. Decoding them as text via
+ * hex2ascii mostly produces coincidental CJK/emoji code points, not a real
+ * tag, so only treat the result as a genuine coinbase tag when it's
+ * printable ASCII.
+ */
+export function isPrintableCoinbaseTag(decoded: string): boolean {
+  return decoded.length > 0 && /^[\x20-\x7e]+$/.test(decoded);
+}
