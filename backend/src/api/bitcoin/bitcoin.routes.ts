@@ -700,11 +700,14 @@ class BitcoinRoutes {
       const endIndex = Math.min(startingIndex + 10, txIds.length);
       for (let i = startingIndex; i < endIndex; i++) {
         try {
-          const transaction = await transactionUtils.$getTransactionExtended(txIds[i], true, true, false, false, req.params.hash);
+          const transaction = await transactionUtils.$getTransactionExtendedRetry(txIds[i], true, true, false, false, req.params.hash);
           transactions.push(transaction);
           loadingIndicators.setProgress('blocktxs-' + req.params.hash, (i - startingIndex + 1) / (endIndex - startingIndex) * 100);
         } catch (e) {
-          logger.debug('getBlockTransactions error: ' + (e instanceof Error ? e.message : e));
+          // Prevout enrichment now degrades gracefully (see $calculateFeeFromInputs)
+          // instead of throwing, so this should only trigger if the tx itself
+          // is genuinely unfetchable - worth a real log line, not just debug.
+          logger.err(`getBlockTransactions: dropping tx ${txIds[i]} from block ${req.params.hash}, index ${i}. Reason: ` + (e instanceof Error ? e.message : e));
         }
       }
       res.json(transactions);

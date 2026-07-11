@@ -40,6 +40,7 @@ import CpfpRepository from '../repositories/CpfpRepository';
 import { parseDATUMTemplateCreator, parseDMNDTemplateCreator } from '../utils/bitcoin-script';
 import database from '../database';
 import { getBlockFirstSeenFromLogs, getOldestLogTimestampFromLogs, scanLogsForBlocksFirstSeen } from '../utils/file-read';
+import txIndexRepository from '../repositories/TxIndexRepository';
 
 class Blocks {
   private blocks: BlockExtended[] = [];
@@ -1173,6 +1174,12 @@ class Blocks {
       const verboseBlock = await bitcoinClient.getBlock(blockHash, 2);
       const block = BitcoinApi.convertBlock(verboseBlock);
       const txIds: string[] = verboseBlock.tx.map(tx => tx.txid);
+
+      if (config.DATABASE.ENABLED) {
+        await txIndexRepository.$indexBlockTransactions(txIds, block.height);
+        await txIndexRepository.$pruneOlderThan(block.height);
+      }
+
       const transactions = await this.$getTransactionsExtended(blockHash, block.height, block.timestamp, false, txIds, false, true) as MempoolTransactionExtended[];
 
       // fill in missing transaction fee data from verboseBlock
