@@ -433,7 +433,8 @@ export class ApiService {
     );
   }
 
-  getRewardStats$(blockCount: number = 144): Observable<RewardStats> {
+  // 1440 blocks/day at Elektron Net's 60s block time (Bitcoin's 144 assumes 10min blocks)
+  getRewardStats$(blockCount: number = 1440): Observable<RewardStats> {
     return this.httpClient.get<RewardStats>(this.apiBaseUrl + this.apiBasePath + `/api/v1/mining/reward-stats/${blockCount}`);
   }
 
