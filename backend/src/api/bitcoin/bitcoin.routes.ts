@@ -331,7 +331,19 @@ class BitcoinRoutes {
       return;
     }
     try {
-      const transaction: IEsploraApi.Transaction = await bitcoinApi.$getRawTransaction(req.params.txId, true);
+      let transaction: IEsploraApi.Transaction;
+      try {
+        transaction = await bitcoinApi.$getRawTransaction(req.params.txId, true);
+      } catch (e) {
+        // Without -txindex, bitcoind can only find a confirmed tx if we tell
+        // it which block it's in - look one up before giving up (same
+        // fallback as getTransaction()/getTransactionStatus()).
+        const blockHash = await transactionUtils.$findBlockHashForTx(req.params.txId);
+        if (!blockHash) {
+          throw e;
+        }
+        transaction = await bitcoinApi.$getRawTransaction(req.params.txId, true, false, false, blockHash);
+      }
       res.setHeader('content-type', 'text/plain');
       res.send(transaction.hex);
     } catch (e) {
