@@ -445,18 +445,31 @@ class BitcoinApi implements AbstractBitcoinApi {
       return transaction;
     }
     let totalIn = 0;
+    let missingPrevout = false;
 
     for (let i = 0; i < transaction.vin.length; i++) {
       if (lazyPrevouts && i > 12) {
         transaction.vin[i].lazy = true;
         continue;
       }
-      const innerTx = await this.$getRawTransaction(transaction.vin[i].txid, false, false);
-      transaction.vin[i].prevout = innerTx.vout[transaction.vin[i].vout];
-      transactionUtils.addInnerScriptsToVin(transaction.vin[i]);
-      totalIn += innerTx.vout[transaction.vin[i].vout].value;
+      try {
+        // Without -txindex, bitcoind needs a block hint to find an older
+        // prevout tx - resolve one via our own tx_index (falls back to a
+        // short recent-block scan for anything not indexed yet).
+        const prevoutBlockHash = await transactionUtils.$findBlockHashForTx(transaction.vin[i].txid);
+        const innerTx = await this.$getRawTransaction(transaction.vin[i].txid, false, false, false, prevoutBlockHash);
+        transaction.vin[i].prevout = innerTx.vout[transaction.vin[i].vout];
+        transactionUtils.addInnerScriptsToVin(transaction.vin[i]);
+        totalIn += innerTx.vout[transaction.vin[i].vout].value;
+      } catch (e) {
+        // Prevout tx is outside the mandatory pruning window (or otherwise
+        // unfetchable) - degrade gracefully instead of failing the whole
+        // transaction: leave this input's prevout empty and the fee unknown,
+        // same as the lazyPrevouts truncation below.
+        missingPrevout = true;
+      }
     }
-    if (lazyPrevouts && transaction.vin.length > 12) {
+    if (missingPrevout || (lazyPrevouts && transaction.vin.length > 12)) {
       transaction.fee = -1;
     } else {
       const totalOut = transaction.vout.reduce((p, output) => p + output.value, 0);

@@ -6,14 +6,38 @@ import * as bitcoinjs from 'bitcoinjs-lib';
 import logger from '../logger';
 import config from '../config';
 import pLimit from '../utils/p-limit';
+import txIndexRepository from '../repositories/TxIndexRepository';
 
 class TransactionUtils {
   // How many recent blocks to scan for a tx when we have no blockhash hint
-  // and no -txindex to fall back on (Elektron Net nodes can't run -txindex,
-  // since pruning is mandatory).
+  // and it's missing from our own tx_index (e.g. a block confirmed before
+  // this index existed, or database indexing is disabled). No -txindex to
+  // fall back on either - Elektron Net nodes can't run it, since pruning is
+  // mandatory.
   private static readonly RECENT_BLOCK_SCAN_DEPTH = 20;
 
   constructor() { }
+
+  /**
+   * Resolve a confirmed tx's block hash without -txindex. Checks our own
+   * tx_index first (covers the full 197,280-block mandatory pruning window,
+   * see TxIndexRepository), falling back to a short recent-block scan for
+   * anything the index missed.
+   * @asyncSafe
+   */
+  public async $findBlockHashForTx(txid: string): Promise<string | undefined> {
+    if (config.DATABASE.ENABLED) {
+      const height = await txIndexRepository.$getBlockHeightForTx(txid);
+      if (height !== null) {
+        try {
+          return await bitcoinCoreApi.$getBlockHash(height);
+        } catch (e) {
+          logger.err(`tx_index pointed tx ${txid} at height ${height}, but that block couldn't be fetched. Reason: ` + (e instanceof Error ? e.message : e));
+        }
+      }
+    }
+    return this.$findRecentBlockHashForTx(txid);
+  }
 
   private async $findRecentBlockHashForTx(txid: string): Promise<string | undefined> {
     try {
@@ -65,10 +89,10 @@ class TransactionUtils {
       return await this.$getTransactionExtended(txid, addPrevouts, lazyPrevouts, true, addMempoolData, blockHash);
     } catch (e) {
       // Without -txindex, bitcoind can only find a confirmed tx if we tell it
-      // which block it's in. If we weren't given a hint, scan a bounded
-      // window of recent blocks for it before giving up.
+      // which block it's in. If we weren't given a hint, look it up before
+      // giving up.
       if (!blockHash) {
-        const foundBlockHash = await this.$findRecentBlockHashForTx(txid);
+        const foundBlockHash = await this.$findBlockHashForTx(txid);
         if (foundBlockHash) {
           return this.$getTransactionExtended(txid, addPrevouts, lazyPrevouts, true, addMempoolData, foundBlockHash);
         }

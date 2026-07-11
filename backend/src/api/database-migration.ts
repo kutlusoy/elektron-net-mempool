@@ -7,7 +7,7 @@ import cpfpRepository from '../repositories/CpfpRepository';
 import { RowDataPacket } from 'mysql2';
 
 class DatabaseMigration {
-  private static currentVersion = 111;
+  private static currentVersion = 112;
   private queryTimeout = 3600_000;
   private statisticsAddedIndexed = false;
   private uniqueLogs: string[] = [];
@@ -1254,6 +1254,18 @@ class DatabaseMigration {
     if (databaseSchemaVersion < 111 && isBitcoin === true) {
       await this.$executeQuery('ALTER TABLE `compact_cpfp_clusters` ADD template_algo TINYINT UNSIGNED NOT NULL DEFAULT 0');
       await this.updateToSchemaVersion(111);
+    }
+
+    // Elektron Net: txid -> block height lookup index, standing in for
+    // -txindex within the mandatory pruning window (see TxIndexRepository).
+    if (databaseSchemaVersion < 112 && isBitcoin === true) {
+      await this.$executeQuery(`CREATE TABLE IF NOT EXISTS tx_index (
+        txid binary(32) NOT NULL,
+        height int(10) unsigned NOT NULL,
+        PRIMARY KEY (txid),
+        INDEX (height)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8;`, await this.$checkIfTableExists('tx_index'));
+      await this.updateToSchemaVersion(112);
     }
   }
 
