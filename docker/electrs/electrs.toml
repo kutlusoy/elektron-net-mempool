@@ -1,0 +1,31 @@
+# elektron-net-electrs configuration for the docker-compose "electrs" profile.
+# Mounted read-only to /etc/electrs/config.toml (a default electrs config path).
+#
+# Everything electrs needs lives in THIS file: the RPC credentials can only be
+# set here (electrs refuses them as CLI arguments or environment variables to
+# prevent credential leaks), and the two Elektron Net specifics below are
+# required for the P2P block download to work at all.
+
+# elektrond JSON-RPC credentials ("USER:PASSWORD").
+# Must match CORE_RPC_USERNAME/CORE_RPC_PASSWORD in docker-compose.yml.
+auth = "elek:pass"
+
+# elektrond endpoints on the docker host.
+# RPC is used for mempool/broadcast; P2P is used for block download.
+daemon_rpc_addr = "host.docker.internal:8332"
+daemon_p2p_addr = "host.docker.internal:8333"
+
+# Elektron Net mainnet P2P message magic (elektron-net chainparams.cpp).
+# Without this, electrs would use Bitcoin's magic and elektrond would reject
+# every P2P message. The option keeps its upstream name for compatibility,
+# but in this fork it applies to every network, not just signet.
+signet_magic = "e1ec7a6e"
+
+# Serve Electrum RPC to the other containers on the backend network
+# (elektron-mempool-api connects here via ELECTRUM_HOST/ELECTRUM_PORT).
+electrum_rpc_addr = "0.0.0.0:50002"
+
+# Index database, persisted via the ./data/electrs volume.
+db_dir = "/data"
+
+log_filters = "INFO"

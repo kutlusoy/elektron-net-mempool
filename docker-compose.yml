@@ -129,13 +129,19 @@ services:
     ports:
       - "8080:8080"
 
-  # Not yet built - placeholder for the future elektron-net-electrs Electrum server
-  # (sibling repo, cloned alongside this one). Once it exists:
-  #   1. build this repo: `cd ../elektron-net-electrs && docker build -t elektron-electrs .`
+  # Elektron Net Electrum server (elektron-net-electrs, sibling repo cloned
+  # alongside this one). To enable:
+  #   1. build the image: `cd ../elektron-net-electrs && docker build -t elektron-electrs .`
   #      (or add a `build: context: ../elektron-net-electrs` block here instead of `image:`)
-  #   2. set MEMPOOL_BACKEND to "electrum" on elektron-mempool-api above
-  #   3. add "elektron-electrs" to elektron-mempool-api's depends_on
-  #   4. run with: docker compose --profile electrs up
+  #   2. adjust RPC credentials in ./docker/electrs/electrs.toml if they differ
+  #      from CORE_RPC_USERNAME/CORE_RPC_PASSWORD above
+  #   3. set MEMPOOL_BACKEND to "electrum" on elektron-mempool-api above
+  #   4. add "elektron-electrs" to elektron-mempool-api's depends_on
+  #   5. run with: docker compose --profile electrs up
+  # NOTE: all electrs settings live in the mounted config file, not in
+  # environment variables - electrs deliberately refuses RPC credentials via
+  # env/CLI (leak prevention), and it additionally needs the Elektron Net P2P
+  # magic and the daemon's P2P port for block download (see the file).
   elektron-electrs:
     container_name: elektron-electrs
     image: elektron-electrs
@@ -144,14 +150,13 @@ services:
     restart: unless-stopped
     networks:
       - backend
-    environment:
-      DAEMON_RPC_ADDR: "host.docker.internal:8332"
-      DAEMON_RPC_USERNAME: "elek"
-      DAEMON_RPC_PASSWORD: "pass"
-      ELECTRUM_RPC_ADDR: "0.0.0.0:50002"
+    # the image defines no CMD/ENTRYPOINT; config is picked up from
+    # /etc/electrs/config.toml (one of electrs' default config paths)
+    command: ["electrs"]
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
+      - ./docker/electrs/electrs.toml:/etc/electrs/config.toml:ro
       - ./data/electrs:/data
 
 networks:
