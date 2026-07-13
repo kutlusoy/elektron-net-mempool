@@ -100,7 +100,12 @@ class BitcoindElectrsApi extends BitcoinApi implements AbstractBitcoinApi {
       const endIndex = Math.min(startingIndex + 10, history.length);
 
       for (let i = startingIndex; i < endIndex; i++) {
-        const tx = await this.$getRawTransaction(history[i].tx_hash, false, true);
+        // Elektron Net nodes are always pruned and never run -txindex, so
+        // bitcoind can only find a confirmed tx if told which block it's in.
+        // The Electrum history entry already carries the height for free.
+        const height = history[i].height;
+        const blockHash = height > 0 ? await this.$getBlockHash(height) : undefined;
+        const tx = await this.$getRawTransaction(history[i].tx_hash, false, true, false, blockHash);
         transactions.push(tx);
         loadingIndicators.setProgress('address-' + address, (i + 1) / endIndex * 100);
       }
@@ -181,7 +186,12 @@ class BitcoindElectrsApi extends BitcoinApi implements AbstractBitcoinApi {
       const endIndex = Math.min(startingIndex + 10, history.length);
 
       for (let i = startingIndex; i < endIndex; i++) {
-        const tx = await this.$getRawTransaction(history[i].tx_hash, false, true);
+        // Same pruned-node caveat as $getAddressTransactions: resolve the
+        // block hash from the height we already have so bitcoind can find
+        // the tx without -txindex.
+        const height = history[i].height;
+        const blockHash = height > 0 ? await this.$getBlockHash(height) : undefined;
+        const tx = await this.$getRawTransaction(history[i].tx_hash, false, true, false, blockHash);
         transactions.push(tx);
         loadingIndicators.setProgress('address-' + scripthash, (i + 1) / endIndex * 100);
       }
