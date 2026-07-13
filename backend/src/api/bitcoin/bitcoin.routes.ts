@@ -760,6 +760,7 @@ class BitcoinRoutes {
         handleError(req, res, 413, e.message);
         return;
       }
+      logger.err(`getAddress failed for ${req.params.address}: ` + (e instanceof Error ? e.stack || e.message : e));
       handleError(req, res, 500, 'Failed to get address');
     }
   }
