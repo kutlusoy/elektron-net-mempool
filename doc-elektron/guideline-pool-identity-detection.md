@@ -1,6 +1,6 @@
 # Elektron Net - `elektron-net-mempool` Pool Identity Detection Guideline
 
-- **Version:** 0.2 (draft, revised after invasiveness review)
+- **Version:** 0.3 (backend implemented on `poolidentity`, pending review/merge and live testing before `main`; frontend display still open)
 - **Date:** August 27, 2026
 - **Audience:** `elektron-net-mempool` backend and frontend developers
 - **Reference implementation:** [`elektron-net-ppool`](https://github.com/kutlusoy/elektron-net-ppool) - `doc-elektron/guideline-pool-identity-op-return.md` (companion document, defines the exact coinbase byte format this document detects); this repo's `backend/src/api/blocks.ts` (`$indexBlock()`, `$getBlockExtended()`, `$findBlockMiner()`), `backend/src/api/pools-parser.ts` (`matchBlockMiner()`), `backend/src/api/bitcoin/bitcoin.routes.ts` (`getBlock` handler), `backend/src/api/bitcoin/bitcoin-api.ts` / `esplora-api.ts` (`$getCoinbaseTx()`) - treat as ground truth for anything referenced below
@@ -16,7 +16,7 @@
 
 This is a **plan, not yet implemented**. It is the companion to `elektron-net-ppool`'s `doc-elektron/guideline-pool-identity-op-return.md`, which specifies two new, magic-tagged, informational `OP_RETURN` outputs a pool may add to its coinbase transaction (a self-declared pool name and pool URL). This document specifies how `elektron-net-mempool` detects, stores, and exposes them, without touching consensus code and without changing any existing pool-matching logic.
 
-No code in this repo has been changed yet. The checklist in Section 8 is the follow-up work.
+**Backend implemented** on the `poolidentity` branch (`backend/src/api/pool-identity-parser.ts`, `backend/src/api/bitcoin/bitcoin.routes.ts`), not yet merged to `main` - Ali is running it through further live testing before merging himself. Frontend display (Section 6) is not part of this revision. See Section 8 for what remains.
 
 ## 2. Relationship to Existing Address-Based Matching (Keep Both)
 
@@ -93,15 +93,16 @@ Unit-test `pool-identity-parser.ts` against:
 
 Integration test: hit the `getBlock` route handler with a fixture block whose coinbase carries both new outputs (in addition to the existing attestation/witness-commitment outputs) and assert the JSON response contains `pool_identity_name`/`pool_identity_url`, while a block-detail request served from the DB cache (`$getBlockByHash` returning non-null) still gets the fields merged in correctly, proving the compute-on-read step runs independently of whether the block itself came from cache or from fresh indexing.
 
-## 8. Checklist (Not Yet Implemented)
+## 8. Checklist
 
-- [ ] Implement `pool-identity-parser.ts` (Section 4)
-- [ ] Wire the compute-on-read step into the `getBlock` route handler in `bitcoin.routes.ts` (Section 4/6), calling `bitcoinApi.$getCoinbaseTx(hash)`
-- [ ] Add the equivalent compute-on-read step to the single-transaction detail endpoint for a coinbase txid (Section 4)
-- [ ] Add the two fields to the block API response, omitted when both are null (Section 6)
+- [x] Implement `pool-identity-parser.ts` (Section 4) - content-addressed, single-push-only, magic-prefix match, never mistakes the witness commitment or a two-push attestation-shaped output for pool identity
+- [x] Wire the compute-on-read step into the `getBlock` route handler in `bitcoin.routes.ts` (Section 4/6), calling `bitcoinApi.$getCoinbaseTx(hash)`, with a small bounded in-process cache (1000 entries) and a try/catch fallback to the plain block response if the coinbase lookup fails
+- [x] Add the two fields to the block API response, omitted when both are null (Section 6)
+- [x] Tests per Section 7 (10 unit tests on `pool-identity-parser.ts`; all passing)
+- [x] Confirm the magic byte values against the final `elektron-net-ppool` implementation before merging (Section 3) - confirmed identical (`EPNM`/`EPUR`)
+- [ ] Add the equivalent compute-on-read step to the single-transaction detail endpoint for a coinbase txid (Section 4) - not done in this pass; only the block-details endpoint was wired up
 - [ ] Frontend display (Section 6) - separate follow-up, needs design input
-- [ ] Tests per Section 7 (including the DB-cache-vs-fresh-index case)
-- [ ] Confirm the magic byte values against the final `elektron-net-ppool` implementation before merging (Section 3)
+- [ ] Live-test on regtest/testnet against a real elektron-net-ppool-built block before merging to `main` - Ali is doing this before merge
 
 ## 9. Non-Goals for This Revision
 
