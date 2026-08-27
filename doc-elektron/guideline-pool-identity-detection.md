@@ -1,9 +1,9 @@
 # Elektron Net - `elektron-net-mempool` Pool Identity Detection Guideline
 
-- **Version:** 0.1 (draft)
+- **Version:** 0.2 (draft, revised after invasiveness review)
 - **Date:** August 27, 2026
 - **Audience:** `elektron-net-mempool` backend and frontend developers
-- **Reference implementation:** [`elektron-net-ppool`](https://github.com/kutlusoy/elektron-net-ppool) - `doc-elektron/guideline-pool-identity-op-return.md` (companion document, defines the exact coinbase byte format this document detects); this repo's `backend/src/api/blocks.ts` (`$getBlockExtended()`, `$findBlockMiner()`), `backend/src/api/pools-parser.ts` (`matchBlockMiner()`), `backend/src/repositories/BlocksRepository.ts`, `backend/src/api/database-migration.ts` (schema version 112 at time of writing) - treat as ground truth for anything referenced below
+- **Reference implementation:** [`elektron-net-ppool`](https://github.com/kutlusoy/elektron-net-ppool) - `doc-elektron/guideline-pool-identity-op-return.md` (companion document, defines the exact coinbase byte format this document detects); this repo's `backend/src/api/blocks.ts` (`$indexBlock()`, `$getBlockExtended()`, `$findBlockMiner()`), `backend/src/api/pools-parser.ts` (`matchBlockMiner()`), `backend/src/api/bitcoin/bitcoin.routes.ts` (`getBlock` handler), `backend/src/api/bitcoin/bitcoin-api.ts` / `esplora-api.ts` (`$getCoinbaseTx()`) - treat as ground truth for anything referenced below
 - **Consumer:** block-details / mining-pool pages in `frontend/`
 - **See also:** [`guideline-pool-identity-op-return.md`](https://github.com/kutlusoy/elektron-net-ppool/blob/poolidentity/doc-elektron/guideline-pool-identity-op-return.md), [`guideline-coinbase-third-op-return.md`](https://github.com/kutlusoy/elektron-net/blob/main/doc-elektron/guideline-coinbase-third-op-return.md)
 
@@ -33,23 +33,29 @@ The two new coinbase fields are, by construction, **self-declared and unverified
 
 Each is a **single** `OP_RETURN` data push: `MAGIC (4 bytes) || UTF-8 payload`, value `0`, always among the **last** coinbase outputs but **MUST** be located by **content**, not by position - mirroring how the node itself locates the UTXO attestation and witness commitment (`guideline-coinbase-third-op-return.md` Section 3: "both are content-addressed, not position-addressed").
 
-## 4. Detection Point
+## 4. Detection Point: Compute on Read, Not on Index (Revised August 27, 2026)
 
-`$getBlockExtended()` in `backend/src/api/blocks.ts`, at the same place `coinbaseAddress`/`coinbaseAddresses`/`coinbaseSignature` are already derived from `coinbaseTx.vout` (current lines ~311-321):
+**Revision note:** an earlier draft of this document hooked detection into `$getBlockExtended()` and planned to persist the result via new `blocks` table columns (Section 5 as originally written). That approach was rejected after checking `$indexBlock()` (`backend/src/api/blocks.ts:1442-1448`):
 
 ```ts
-if (coinbaseTx?.vout.length > 0) {
-    extras.coinbaseAddress = coinbaseTx.vout[0].scriptpubkey_address ?? null;
-    extras.coinbaseAddresses = [...new Set<string>(coinbaseTx.vout.map(v => v.scriptpubkey_address).filter(a => a) as string[])];
-    extras.coinbaseSignature = coinbaseTx.vout[0].scriptpubkey_asm ?? null;
-    extras.coinbaseSignatureAscii = transactionUtils.hex2ascii(coinbaseTx.vin[0].scriptsig) ?? null;
-    // planned addition:
-    // extras.poolIdentityName = extractPoolIdentityField(coinbaseTx.vout, POOL_IDENTITY_MAGIC_NAME);
-    // extras.poolIdentityUrl = extractPoolIdentityField(coinbaseTx.vout, POOL_IDENTITY_MAGIC_URL);
-} else {
+public async $indexBlock(hash: string, block?: IEsploraApi.Block, skipDb = false): Promise<BlockExtended> {
+    if (Common.indexingEnabled() && !skipDb) {
+      const dbBlock = await blocksRepository.$getBlockByHash(hash);
+      if (dbBlock !== null) {
+        return dbBlock;
+      }
+    }
     ...
-}
 ```
+
+Once a block is indexed into SQL, every later request for it returns the **stored row** directly and never touches `coinbaseTx.vout` again. Hooking detection into `$getBlockExtended()` without a persisted column would only populate the fields on the single, first indexing pass, then silently lose them on every subsequent request - not an acceptable "non-invasive" outcome, and not something Ali asked for.
+
+The chosen design avoids new columns entirely by **not persisting this at all**. The coinbase transaction is never actually lost: it lives permanently in the underlying node/Esplora backend, addressable by block hash via the already-existing, already-used `bitcoinApi.$getCoinbaseTx(blockhash)` (`backend/src/api/bitcoin/esplora-api.ts:606`, `backend/src/api/bitcoin/bitcoin-api.ts:284`, already called today by the coinbase-address backfill job at `blocks.ts:966`). `elektron-net-mempool`'s own `blocks` SQL table is a cache for list/search performance, not the only source of this data - so detection can simply run **at request time**, in the single-block (and single-tx) detail handlers, computed fresh from a live `$getCoinbaseTx()` call:
+
+- `backend/src/api/bitcoin/bitcoin.routes.ts`, the `getBlock` handler (current line ~483, calling `blocks.$getBlock(req.params.hash)`): after the existing call returns (regardless of whether it came from the DB cache or was freshly indexed), fetch the coinbase transaction once more via `bitcoinApi.$getCoinbaseTx(hash)` and merge the two parsed fields into the JSON response before it is sent. `BlocksRepository`, `mempool.interfaces.ts`, and `database-migration.ts` are **not** touched.
+- The equivalent single-transaction detail endpoint for a coinbase txid gets the same treatment, parsing directly from the transaction it already fetched.
+
+Cost: one extra, cheap, already-battle-tested transaction lookup per block-detail request (the exact same call the existing backfill job already performs in bulk without issue). This is strictly a single-block/single-tx feature - it cannot be used to filter or search across many blocks by pool identity in bulk, since nothing is stored, but that was already out of scope (Section 9, "no automatic reconciliation ... no search").
 
 Planned new module `backend/src/api/pool-identity-parser.ts`, exporting `extractPoolIdentityField(vout, magic)`:
 
@@ -59,26 +65,19 @@ Planned new module `backend/src/api/pool-identity-parser.ts`, exporting `extract
 - If the single push's first 4 bytes equal the given `magic`, return the remaining bytes decoded as UTF-8 (replacing invalid sequences rather than throwing); otherwise return `null`.
 - **MUST NOT** match a 36-byte push starting with `aa21a9ed` (the witness-commitment magic) against either `EPNM`/`EPUR` magic - this is automatic since the byte comparison is exact-prefix, not partial, but is worth an explicit unit test (Section 7).
 
-## 5. Storage
+## 5. Storage: None (By Design)
 
-- New `BlockExtension` fields in `backend/src/mempool.interfaces.ts`, next to the existing `coinbaseSignature`/`coinbaseSignatureAscii` (current lines ~320-321):
-  ```ts
-  poolIdentityName: string | null;
-  poolIdentityUrl: string | null;
-  ```
-- New `blocks` table columns, added via a new migration step in `backend/src/api/database-migration.ts` (current `currentVersion = 112` -> bump to `113`), following the exact pattern already used for `coinbase_signature`/`coinbase_signature_ascii` (current lines ~1602-1605):
-  ```sql
-  ADD pool_identity_name varchar(200) NULL,
-  ADD pool_identity_url varchar(200) NULL,
-  ```
-- `backend/src/repositories/BlocksRepository.ts`:
-  - Extend the `SELECT` list (pattern at current lines ~93-94) to read the two new columns.
-  - Extend the extras-hydration block (pattern at current lines ~1305-1306) to populate `extras.poolIdentityName`/`extras.poolIdentityUrl`.
-  - Extend the truncation-on-save logic (pattern at current lines ~120-121, where `coinbaseSignature`/`coinbaseSignatureAscii` are truncated to 500 chars before insert) to similarly cap the two new fields at the column width, since both are free-form operator-supplied text.
+No new `BlockExtension` fields, no new `blocks` table columns, no `database-migration.ts` step, no changes to `BlocksRepository.ts`. Per Section 4, the two fields are computed fresh from `bitcoinApi.$getCoinbaseTx(hash)` at request time and attached only to the outgoing API response object, never written back to SQL or to the in-memory `BlockExtended` object that gets persisted by `blocksRepository.$saveBlockInDatabase()`.
+
+This is a deliberate trade-off, not an oversight:
+
+- **Gain:** zero migration, zero schema change, zero backfill risk for the existing block history, zero new persisted columns to maintain (truncation limits, index bloat, GDPR-style "how do we scrub this" questions for free-form operator text - none of that applies to data that is never stored).
+- **Cost:** one extra transaction lookup per block-detail request (same call the coinbase-address backfill job already performs in bulk today), and no ability to bulk-search/filter/list blocks by pool identity - already ruled out as a non-goal in Section 9 before this revision, so nothing is actually given up versus the original plan.
+- **MAY, later, if bulk search is ever wanted:** revisit persistence at that point, ideally as a single additive `pool_identity` JSON column (`{"name": "...", "url": "..."}`) rather than two separate `varchar` columns, keeping any future migration to one line. Not needed for this revision.
 
 ## 6. API / Frontend Exposure
 
-- Add `pool_identity_name` / `pool_identity_url` to the block API response, alongside the existing `coinbase_signature`/`coinbase_signature_ascii` fields.
+- In the `getBlock` route handler (`backend/src/api/bitcoin/bitcoin.routes.ts`, current line ~483), after `blocks.$getBlock(req.params.hash)` returns, call `bitcoinApi.$getCoinbaseTx(hash)`, run `extractPoolIdentityField()` for both magics, and add `pool_identity_name` / `pool_identity_url` to the JSON response only if either is non-null (omit the keys entirely otherwise, so existing API consumers see no shape change for blocks that opt out).
 - Frontend (block-details page): a small, visually secondary line such as "Pool self-reported: `<name>` (`<url>`)" next to the existing registry-matched pool tag/logo. It **MUST** be visually distinguishable from the verified pool tag (e.g. muted styling, an "unverified" tooltip) so users do not mistake a self-declared claim for a registry-confirmed identity. Exact component design is out of scope for this draft and is flagged as follow-up UI work (Section 10).
 
 ## 7. Test Plan
@@ -92,18 +91,16 @@ Unit-test `pool-identity-parser.ts` against:
 - Truncated or malformed pushes (fewer than 4 bytes after `OP_RETURN`).
 - Payload bytes that are not valid UTF-8.
 
-Integration test: extend the existing block-processing test fixtures with a synthetic coinbase carrying both new outputs (in addition to the existing attestation/witness-commitment outputs) and assert that `BlockExtended.extras.poolIdentityName`/`poolIdentityUrl` populate correctly on `$getBlockExtended()`, and correctly persist and reload via `BlocksRepository`.
+Integration test: hit the `getBlock` route handler with a fixture block whose coinbase carries both new outputs (in addition to the existing attestation/witness-commitment outputs) and assert the JSON response contains `pool_identity_name`/`pool_identity_url`, while a block-detail request served from the DB cache (`$getBlockByHash` returning non-null) still gets the fields merged in correctly, proving the compute-on-read step runs independently of whether the block itself came from cache or from fresh indexing.
 
 ## 8. Checklist (Not Yet Implemented)
 
 - [ ] Implement `pool-identity-parser.ts` (Section 4)
-- [ ] Wire the two new fields into `$getBlockExtended()` (Section 4)
-- [ ] Add `poolIdentityName`/`poolIdentityUrl` to `mempool.interfaces.ts` (Section 5)
-- [ ] Add database migration `113` (Section 5)
-- [ ] Extend `BlocksRepository.ts` read/write/truncation paths (Section 5)
-- [ ] Add the two fields to the block API response (Section 6)
+- [ ] Wire the compute-on-read step into the `getBlock` route handler in `bitcoin.routes.ts` (Section 4/6), calling `bitcoinApi.$getCoinbaseTx(hash)`
+- [ ] Add the equivalent compute-on-read step to the single-transaction detail endpoint for a coinbase txid (Section 4)
+- [ ] Add the two fields to the block API response, omitted when both are null (Section 6)
 - [ ] Frontend display (Section 6) - separate follow-up, needs design input
-- [ ] Tests per Section 7
+- [ ] Tests per Section 7 (including the DB-cache-vs-fresh-index case)
 - [ ] Confirm the magic byte values against the final `elektron-net-ppool` implementation before merging (Section 3)
 
 ## 9. Non-Goals for This Revision
@@ -111,6 +108,7 @@ Integration test: extend the existing block-processing test fixtures with a synt
 - No automatic reconciliation into the `pools.json` registry or the `pools` database table - this stays purely informational/display, consistent with the "informational only" decision recorded in `elektron-net`'s `guideline-coinbase-third-op-return.md` Section 1.
 - No validation, allowlisting, or uniqueness enforcement of self-reported pool names.
 - No support for any pool implementation that does not use the exact magic bytes from Section 3 (notably `elektron-net-pool`, unless and until it adopts the same format - see Open Questions).
+- No persistence anywhere (SQL, Redis, or otherwise) and no bulk search/filter/list by pool identity across many blocks - see Section 5.
 
 ## 10. Open Questions
 
