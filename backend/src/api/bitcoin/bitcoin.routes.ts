@@ -23,12 +23,39 @@ import { calculateMempoolTxCpfp } from '../cpfp';
 import { handleError } from '../../utils/api';
 import poolsUpdater from '../../tasks/pools-updater';
 import chainTips from '../chain-tips';
+import { extractPoolIdentity, PoolIdentity } from '../pool-identity-parser';
 
 const TXID_REGEX = /^[a-f0-9]{64}$/i;
 const BLOCK_HASH_REGEX = /^[a-f0-9]{64}$/i;
 const ADDRESS_REGEX = /^[a-z0-9]{2,120}$/i;
 const SCRIPT_HASH_REGEX = /^([a-f0-9]{2})+$/i;
 const MAX_TRANSACTION_TIMES = 100;
+// Small bounded cache so repeat requests for the same (immutable, confirmed)
+// block don't each re-fetch the coinbase tx just to read pool-identity
+// fields. Deliberately in-process only, and module-level rather than a class
+// field since the `getBlock` route is registered unbound (see
+// `initRoutes()` below) -- see doc-elektron/guideline-pool-identity-detection.md
+// Section 5 for why this is not persisted in SQL.
+const POOL_IDENTITY_CACHE_MAX_ENTRIES = 1000;
+const poolIdentityCache = new Map<string, PoolIdentity>();
+
+/** @asyncUnsafe -- rejects if $getCoinbaseTx() fails; callers must try/catch */
+async function $getCachedPoolIdentity(blockHash: string): Promise<PoolIdentity> {
+  const cached = poolIdentityCache.get(blockHash);
+  if (cached) {
+    return cached;
+  }
+  const coinbaseTx = await bitcoinApi.$getCoinbaseTx(blockHash);
+  const identity = extractPoolIdentity(coinbaseTx.vout);
+  if (poolIdentityCache.size >= POOL_IDENTITY_CACHE_MAX_ENTRIES) {
+    const oldestKey = poolIdentityCache.keys().next().value;
+    if (oldestKey !== undefined) {
+      poolIdentityCache.delete(oldestKey);
+    }
+  }
+  poolIdentityCache.set(blockHash, identity);
+  return identity;
+}
 
 class BitcoinRoutes {
   public initRoutes(app: Application) {
@@ -500,7 +527,29 @@ class BitcoinRoutes {
       }
 
       res.setHeader('Expires', new Date(Date.now() + 1000 * cacheDuration).toUTCString());
-      res.json(block);
+
+      // Self-reported pool identity (name/URL), computed on read from the
+      // coinbase tx rather than persisted -- see
+      // doc-elektron/guideline-pool-identity-detection.md. Never merged into
+      // `block` itself (which may be the shared in-memory-cached object from
+      // blocks.$getBlock), and omitted from the response entirely when
+      // absent so the API shape is unchanged for blocks that don't opt in.
+      let responseBody: unknown = block;
+      try {
+        const poolIdentity = await $getCachedPoolIdentity(req.params.hash);
+        if (poolIdentity.name || poolIdentity.url) {
+          responseBody = {
+            ...block,
+            pool_identity_name: poolIdentity.name,
+            pool_identity_url: poolIdentity.url,
+          };
+        }
+      } catch (poolIdentityError) {
+        logger.debug(`Failed to extract pool identity for block ${req.params.hash}: ` +
+          (poolIdentityError instanceof Error ? poolIdentityError.message : poolIdentityError));
+      }
+
+      res.json(responseBody);
     } catch (e: any) {
       handleError(req, res, e?.response?.status === 404 ? 404 : 500, 'Failed to get block');
     }
