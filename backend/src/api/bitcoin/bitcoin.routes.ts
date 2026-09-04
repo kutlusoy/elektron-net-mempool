@@ -37,16 +37,34 @@ const MAX_TRANSACTION_TIMES = 100;
 // `initRoutes()` below) -- see doc-elektron/guideline-pool-identity-detection.md
 // Section 5 for why this is not persisted in SQL.
 const POOL_IDENTITY_CACHE_MAX_ENTRIES = 1000;
-const poolIdentityCache = new Map<string, PoolIdentity>();
 
-/** @asyncUnsafe -- rejects if $getCoinbaseTx() fails; callers must try/catch */
-async function $getCachedPoolIdentity(blockHash: string): Promise<PoolIdentity> {
+interface CachedPoolIdentity extends PoolIdentity {
+  // Set when the block's coinbase tx could not be read because the block
+  // has already aged out of the node's mandatory pruning window -- distinct
+  // from {name: null, url: null}, which means the coinbase was read fine
+  // and the pool simply never added these OP_RETURN outputs. Once a block
+  // is pruned it never comes back, so caching this permanently is safe.
+  pruned?: boolean;
+}
+const poolIdentityCache = new Map<string, CachedPoolIdentity>();
+
+/** @asyncUnsafe -- rejects if the coinbase lookup fails for a reason other than pruning; callers must try/catch */
+async function $getCachedPoolIdentity(blockHash: string): Promise<CachedPoolIdentity> {
   const cached = poolIdentityCache.get(blockHash);
   if (cached) {
     return cached;
   }
-  const coinbaseTx = await bitcoinApi.$getCoinbaseTx(blockHash);
-  const identity = extractPoolIdentity(coinbaseTx.vout);
+  let identity: CachedPoolIdentity;
+  try {
+    const coinbaseTx = await bitcoinApi.$getCoinbaseTx(blockHash);
+    identity = extractPoolIdentity(coinbaseTx.vout);
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    if (!/pruned/i.test(message)) {
+      throw e;
+    }
+    identity = { name: null, url: null, pruned: true };
+  }
   if (poolIdentityCache.size >= POOL_IDENTITY_CACHE_MAX_ENTRIES) {
     const oldestKey = poolIdentityCache.keys().next().value;
     if (oldestKey !== undefined) {
@@ -534,14 +552,20 @@ class BitcoinRoutes {
       // `block` itself (which may be the shared in-memory-cached object from
       // blocks.$getBlock), and omitted from the response entirely when
       // absent so the API shape is unchanged for blocks that don't opt in.
+      // pool_identity_pruned is set (rather than the fields simply being
+      // absent, same as a pool that never declared an identity) when the
+      // block has aged out of the mandatory pruning window and its coinbase
+      // can no longer be read at all -- the frontend should show this as
+      // "unknown/pruned", not as "no identity declared".
       let responseBody: unknown = block;
       try {
         const poolIdentity = await $getCachedPoolIdentity(req.params.hash);
-        if (poolIdentity.name || poolIdentity.url) {
+        if (poolIdentity.name || poolIdentity.url || poolIdentity.pruned) {
           responseBody = {
             ...block,
             pool_identity_name: poolIdentity.name,
             pool_identity_url: poolIdentity.url,
+            ...(poolIdentity.pruned ? { pool_identity_pruned: true } : {}),
           };
         }
       } catch (poolIdentityError) {

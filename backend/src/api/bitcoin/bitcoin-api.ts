@@ -283,7 +283,11 @@ class BitcoinApi implements AbstractBitcoinApi {
   /** @asyncUnsafe */
   async $getCoinbaseTx(blockhash: string): Promise<IEsploraApi.Transaction> {
     const txids = await this.$getTxIdsForBlock(blockhash);
-    return this.$getRawTransaction(txids[0]);
+    // Elektron Net nodes are always pruned and never run -txindex, so a
+    // confirmed tx (already out of the mempool) can only be found by
+    // passing its containing block hash -- see the same pattern in
+    // $getAddressTransactions/$calculateFeeFromInputs.
+    return this.$getRawTransaction(txids[0], false, false, false, blockhash);
   }
 
   async $getAddressTransactionSummary(address: string): Promise<IEsploraApi.AddressTxSummary[]> {
