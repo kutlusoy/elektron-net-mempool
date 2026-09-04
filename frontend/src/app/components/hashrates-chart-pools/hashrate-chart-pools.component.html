@@ -12,19 +12,19 @@
 
     <form [formGroup]="radioGroupForm" class="formRadioGroup" *ngIf="(hashrateObservable$ | async) as stats">
       <div class="btn-group" role="group" name="radioBasic">
-        <ng-container *ngIf="stats.blockCount >= 25920">
+        <ng-container *ngIf="stats.blockCount >= 259200">
           <input type="radio" class="btn-check" id="dominance-6m" [value]="'6m'" fragment="6m" [routerLink]="['/graphs/mining/pools-dominance' | relativeUrl]" [attr.data-cy]="'6m'" formControlName="dateSpan">
           <label class="btn btn-primary btn-sm" for="dominance-6m">6M</label>
         </ng-container>
-        <ng-container *ngIf="stats.blockCount >= 52560">
+        <ng-container *ngIf="stats.blockCount >= 525600">
           <input type="radio" class="btn-check" id="dominance-1y" [value]="'1y'" fragment="1y" [routerLink]="['/graphs/mining/pools-dominance' | relativeUrl]" [attr.data-cy]="'1y'" formControlName="dateSpan">
           <label class="btn btn-primary btn-sm" for="dominance-1y">1Y</label>
         </ng-container>
-        <ng-container *ngIf="stats.blockCount >= 105120">
+        <ng-container *ngIf="stats.blockCount >= 1051200">
           <input type="radio" class="btn-check" id="dominance-2y" [value]="'2y'" fragment="2y" [routerLink]="['/graphs/mining/pools-dominance' | relativeUrl]" [attr.data-cy]="'2y'" formControlName="dateSpan">
           <label class="btn btn-primary btn-sm" for="dominance-2y">2Y</label>
         </ng-container>
-        <ng-container *ngIf="stats.blockCount >= 157680">
+        <ng-container *ngIf="stats.blockCount >= 1576800">
           <input type="radio" class="btn-check" id="dominance-3y" [value]="'3y'" fragment="3y" [routerLink]="['/graphs/mining/pools-dominance' | relativeUrl]" [attr.data-cy]="'3y'" formControlName="dateSpan">
           <label class="btn btn-primary btn-sm" for="dominance-3y">3Y</label>
         </ng-container>

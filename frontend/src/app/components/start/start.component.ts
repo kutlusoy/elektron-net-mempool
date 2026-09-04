@@ -144,7 +144,7 @@ export class StartComponent implements OnInit, AfterViewChecked, OnDestroy {
           if (specialBlocks[sb].networks.includes(this.stateService.network || 'mainnet')) {
             const height = parseInt(sb, 10);
             const diff = height - block.height;
-            if (diff > 0 && diff <= 1008) {
+            if (diff > 0 && diff <= 10080) {
               this.countdown = diff;
               this.eventName = specialBlocks[sb].labelEvent;
             }

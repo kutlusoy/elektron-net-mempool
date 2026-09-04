@@ -240,7 +240,7 @@ class Mining {
       const lastMondayMidnight = this.getDateMidnight(lastMonday);
       let toTimestamp = lastMondayMidnight.getTime();
 
-      const totalWeekIndexed = (await BlocksRepository.$blockCount(null, null)) / 1008;
+      const totalWeekIndexed = (await BlocksRepository.$blockCount(null, null)) / 10080;
       let indexedThisRun = 0;
       let totalIndexed = 0;
       let newlyIndexed = 0;
