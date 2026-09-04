@@ -3379,12 +3379,12 @@
         <note priority="1" from="description">mining.reward-stats</note>
       </trans-unit>
       <trans-unit id="8527213d7c7dbffe48a45c4d796ae221d419c71a" datatype="html">
-        <source>(144 blocks)</source>
+        <source>(1440 blocks)</source>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/components/mining-dashboard/mining-dashboard.component.html</context>
           <context context-type="linenumber">11</context>
         </context-group>
-        <note priority="1" from="description">mining.144-blocks</note>
+        <note priority="1" from="description">mining.1440-blocks</note>
       </trans-unit>
       <trans-unit id="e1139ea570985b3f114e18876f09fd7223429983" datatype="html">
         <source>Latest blocks</source>

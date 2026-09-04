@@ -6068,13 +6068,13 @@
         <note priority="1" from="description">mining.reward-stats</note>
       </trans-unit>
       <trans-unit id="8527213d7c7dbffe48a45c4d796ae221d419c71a" datatype="html">
-        <source>(144 blocks)</source>
-        <target>(144 blokke)</target>
+        <source>(1440 blocks)</source>
+        <target>(1440 blokke)</target>
         <context-group purpose="location">
           <context context-type="sourcefile">src/app/components/mining-dashboard/mining-dashboard.component.html</context>
           <context context-type="linenumber">10</context>
         </context-group>
-        <note priority="1" from="description">mining.144-blocks</note>
+        <note priority="1" from="description">mining.1440-blocks</note>
       </trans-unit>
       <trans-unit id="21d0c2d4d5429197892c827178819da2770f2f25" datatype="html">
         <source>Adjustments</source>

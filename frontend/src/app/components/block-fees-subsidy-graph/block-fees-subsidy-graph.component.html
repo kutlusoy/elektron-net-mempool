@@ -11,39 +11,39 @@
 
     <form [formGroup]="radioGroupForm" class="formRadioGroup" *ngIf="(statsObservable$ | async) as stats">
       <div class="btn-group" role="group" name="radioBasic">
-        <ng-container *ngIf="stats.blockCount >= 144">
+        <ng-container *ngIf="stats.blockCount >= 1440">
           <input type="radio" class="btn-check" id="subsidyfees-24h" [value]="'24h'" fragment="24h" [routerLink]="['/graphs/mining/block-fees-subsidy' | relativeUrl]" formControlName="dateSpan">
           <label class="btn btn-primary btn-sm" for="subsidyfees-24h">24h</label>
         </ng-container>
-        <ng-container *ngIf="stats.blockCount >= 432">
+        <ng-container *ngIf="stats.blockCount >= 4320">
           <input type="radio" class="btn-check" id="subsidyfees-3d" [value]="'3d'" fragment="3d" [routerLink]="['/graphs/mining/block-fees-subsidy' | relativeUrl]" formControlName="dateSpan">
           <label class="btn btn-primary btn-sm" for="subsidyfees-3d">3D</label>
         </ng-container>
-        <ng-container *ngIf="stats.blockCount >= 1008">
+        <ng-container *ngIf="stats.blockCount >= 10080">
           <input type="radio" class="btn-check" id="subsidyfees-1w" [value]="'1w'" fragment="1w" [routerLink]="['/graphs/mining/block-fees-subsidy' | relativeUrl]" formControlName="dateSpan">
           <label class="btn btn-primary btn-sm" for="subsidyfees-1w">1W</label>
         </ng-container>
-        <ng-container *ngIf="stats.blockCount >= 4320">
+        <ng-container *ngIf="stats.blockCount >= 43200">
           <input type="radio" class="btn-check" id="subsidyfees-1m" [value]="'1m'" fragment="1m" [routerLink]="['/graphs/mining/block-fees-subsidy' | relativeUrl]" formControlName="dateSpan">
           <label class="btn btn-primary btn-sm" for="subsidyfees-1m">1M</label>
         </ng-container>
-        <ng-container *ngIf="stats.blockCount >= 12960">
+        <ng-container *ngIf="stats.blockCount >= 129600">
           <input type="radio" class="btn-check" id="subsidyfees-3m" [value]="'3m'" fragment="3m" [routerLink]="['/graphs/mining/block-fees-subsidy' | relativeUrl]" formControlName="dateSpan">
           <label class="btn btn-primary btn-sm" for="subsidyfees-3m">3M</label>
         </ng-container>
-        <ng-container *ngIf="stats.blockCount >= 25920">
+        <ng-container *ngIf="stats.blockCount >= 259200">
           <input type="radio" class="btn-check" id="subsidyfees-6m" [value]="'6m'" fragment="6m" [routerLink]="['/graphs/mining/block-fees-subsidy' | relativeUrl]" formControlName="dateSpan">
           <label class="btn btn-primary btn-sm" for="subsidyfees-6m">6M</label>
         </ng-container>
-        <ng-container *ngIf="stats.blockCount >= 52560">
+        <ng-container *ngIf="stats.blockCount >= 525600">
           <input type="radio" class="btn-check" id="subsidyfees-1y" [value]="'1y'" fragment="1y" [routerLink]="['/graphs/mining/block-fees-subsidy' | relativeUrl]" formControlName="dateSpan">
           <label class="btn btn-primary btn-sm" for="subsidyfees-1y">1Y</label>
         </ng-container>
-        <ng-container *ngIf="stats.blockCount >= 105120">
+        <ng-container *ngIf="stats.blockCount >= 1051200">
           <input type="radio" class="btn-check" id="subsidyfees-2y" [value]="'2y'" fragment="2y" [routerLink]="['/graphs/mining/block-fees-subsidy' | relativeUrl]" formControlName="dateSpan">
           <label class="btn btn-primary btn-sm" for="subsidyfees-2y">2Y</label>
         </ng-container>
-        <ng-container *ngIf="stats.blockCount >= 157680">
+        <ng-container *ngIf="stats.blockCount >= 1576800">
           <input type="radio" class="btn-check" id="subsidyfees-3y" [value]="'3y'" fragment="3y" [routerLink]="['/graphs/mining/block-fees-subsidy' | relativeUrl]" formControlName="dateSpan">
           <label class="btn btn-primary btn-sm" for="subsidyfees-3y">3Y</label>
         </ng-container>
