@@ -212,6 +212,28 @@
         </span>
         </td>
       </tr>
+      <tr *ngIf="network !== 'liquid' && network !== 'liquidtestnet' && (block.pool_identity_name || block.pool_identity_url || block.pool_identity_pruned)">
+        <td i18n="block.pool-self-reported">Pool (self-reported)</td>
+        <td>
+          <ng-container *ngIf="block.pool_identity_pruned; else poolIdentityKnown">
+            <span class="badge bg-secondary" placement="bottom"
+              i18n-ngbTooltip="block.pool-self-reported-pruned-desc"
+              ngbTooltip="This block is outside the node's pruning window -- its coinbase transaction can no longer be read, so it is unknown whether the pool declared an identity."
+              i18n="block.pool-self-reported-pruned">Unknown (pruned)</span>
+          </ng-container>
+          <ng-template #poolIdentityKnown>
+            <span class="badge bg-secondary pool-identity-self-reported" placement="bottom"
+              i18n-ngbTooltip="block.pool-self-reported-desc"
+              ngbTooltip="Unverified: freely chosen by the pool itself, not confirmed against the pool registry.">
+              <ng-container *ngIf="block.pool_identity_name">{{ block.pool_identity_name }}</ng-container>
+              <ng-container *ngIf="block.pool_identity_url">
+                <ng-container *ngIf="block.pool_identity_name"> - </ng-container>
+                <a [href]="block.pool_identity_url" target="_blank" rel="noopener noreferrer" (click)="$event.stopPropagation()">{{ block.pool_identity_url }}</a>
+              </ng-container>
+            </span>
+          </ng-template>
+        </td>
+      </tr>
     </ng-container>
     <ng-template #loadingRest>
       <tr>

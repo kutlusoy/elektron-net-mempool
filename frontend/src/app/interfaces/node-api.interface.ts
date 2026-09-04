@@ -238,6 +238,17 @@ export interface BlockExtension {
 
 export interface BlockExtended extends Block {
   extras?: BlockExtension;
+  // Self-reported pool name/URL from the coinbase OP_RETURN outputs (see
+  // doc-elektron/guideline-pool-identity-detection.md) -- unverified,
+  // works identically for either pool type (elektron-net-pool or
+  // elektron-net-ppool), never merged into extras.pool (the registry-
+  // matched, verified identity). Present only when the pool added at
+  // least one of the two outputs; pool_identity_pruned means the block
+  // aged out of the pruning window and its coinbase could not be read
+  // at all, distinct from a pool that simply declared nothing.
+  pool_identity_name?: string | null;
+  pool_identity_url?: string | null;
+  pool_identity_pruned?: boolean;
 }
 
 export interface BlockAudit extends BlockExtended {
