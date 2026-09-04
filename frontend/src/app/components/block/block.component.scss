@@ -298,3 +298,16 @@ h1 {
     }
   }
 }
+
+// Self-reported (unverified) pool identity from the coinbase OP_RETURN --
+// deliberately muted/opaque relative to the verified pool badge (bg-primary
+// above) so it never reads as a confirmed pool match.
+.pool-identity-self-reported {
+  opacity: 0.75;
+  word-break: break-all;
+
+  a {
+    color: inherit;
+    text-decoration: underline;
+  }
+}
