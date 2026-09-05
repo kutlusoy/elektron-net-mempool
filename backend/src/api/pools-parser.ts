@@ -16,8 +16,11 @@ class PoolsParser {
     'id': 0,
     // Elektron Net's UTXO attestation rule forbids any scriptSig byte beyond the
     // fixed coinbase template, so solo miners can't be tagged in the coinbase
-    // either - this label covers both solo pool software and direct CPU miners.
-    'name': 'Solo Pool Miner',
+    // either - this label covers both solo pool software and direct CPU miners,
+    // and any self-reported identity that failed the publicly-verifiable-URL
+    // check (see doc-elektron/guideline-pool-identity-ranking.md) is kept
+    // separate from this one, under privatePool below.
+    'name': 'Unknown',
     'link': 'https://github.com/kutlusoy/elektron-net-pool',
     'regexes': '[]',
     'addresses': '[]',
@@ -62,7 +65,7 @@ class PoolsParser {
     await this.$insertUnknownPool();
     await this.$insertPrivatePool();
 
-    // Always re-check Solo Pool Miner-tagged blocks against the current pool
+    // Always re-check Unknown-tagged blocks against the current pool
     // list, not only when a pool's own record changed this run: our pool
     // list is small and updated manually, so a block can easily get mined
     // and indexed before its pool's address is added. Cheap for our indexed

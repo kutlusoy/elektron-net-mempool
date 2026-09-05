@@ -503,7 +503,7 @@ class Blocks {
     }
 
     // Elektron Net: the registry match failed (this block would otherwise
-    // be tagged "Solo Pool Miner"/unknown) -- see if the pool self-reported
+    // be tagged "Unknown") -- see if the pool self-reported
     // an identity via the coinbase OP_RETURN outputs instead (see
     // doc-elektron/guideline-pool-identity-ranking.md). Self-reported and
     // unverified, but deliberately given a real `pools` row so it shows up
