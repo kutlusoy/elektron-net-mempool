@@ -29,6 +29,20 @@ class PoolsRepository {
   }
 
   /**
+   * Get the 'private pools' bucket tagging info -- see
+   * doc-elektron/guideline-pool-identity-ranking.md
+   * @asyncUnsafe
+   */
+  public async $getPrivatePool(): Promise<PoolTag> {
+    let [rows]: any[] = await DB.query('SELECT id, unique_id as uniqueId, name, slug FROM pools where slug = "private"');
+    if (rows && rows.length === 0 && config.DATABASE.ENABLED) {
+      await poolsParser.$insertPrivatePool();
+      [rows] = await DB.query('SELECT id, unique_id as uniqueId, name, slug FROM pools where slug = "private"');
+    }
+    return <PoolTag>rows[0];
+  }
+
+  /**
    * Get basic pool info and block count
    * @asyncSafe
    */

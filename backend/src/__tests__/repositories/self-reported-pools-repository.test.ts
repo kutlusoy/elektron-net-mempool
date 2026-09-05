@@ -1,4 +1,4 @@
-import { normalizeSelfReportedName, normalizeSelfReportedUrl, slugifySelfReportedName } from '../../repositories/SelfReportedPoolsRepository';
+import { isPubliclyVerifiableUrl, normalizeSelfReportedName, normalizeSelfReportedUrl, slugifySelfReportedName } from '../../repositories/SelfReportedPoolsRepository';
 
 describe('SelfReportedPoolsRepository normalization', () => {
   describe('normalizeSelfReportedName', () => {
@@ -59,6 +59,54 @@ describe('SelfReportedPoolsRepository normalization', () => {
     it('truncates to the pools.slug column width (50)', () => {
       const long = 'a'.repeat(80);
       expect(slugifySelfReportedName(long).length).toBe(50);
+    });
+  });
+
+  describe('isPubliclyVerifiableUrl', () => {
+    it('returns false for undefined, null, and empty input', () => {
+      expect(isPubliclyVerifiableUrl(undefined)).toBe(false);
+      expect(isPubliclyVerifiableUrl(null)).toBe(false);
+      expect(isPubliclyVerifiableUrl('')).toBe(false);
+    });
+
+    it('returns false for an unparsable URL', () => {
+      expect(isPubliclyVerifiableUrl('not a url')).toBe(false);
+    });
+
+    it('returns false for a non-http(s) scheme', () => {
+      expect(isPubliclyVerifiableUrl('ftp://example.com')).toBe(false);
+      expect(isPubliclyVerifiableUrl('file:///etc/passwd')).toBe(false);
+    });
+
+    it('returns false for localhost and loopback', () => {
+      expect(isPubliclyVerifiableUrl('http://localhost/')).toBe(false);
+      expect(isPubliclyVerifiableUrl('http://127.0.0.1/')).toBe(false);
+      expect(isPubliclyVerifiableUrl('http://[::1]/')).toBe(false);
+    });
+
+    it('returns false for private IPv4 ranges', () => {
+      expect(isPubliclyVerifiableUrl('http://10.0.0.5/')).toBe(false);
+      expect(isPubliclyVerifiableUrl('http://172.16.0.5/')).toBe(false);
+      expect(isPubliclyVerifiableUrl('http://192.168.1.1/')).toBe(false);
+      expect(isPubliclyVerifiableUrl('http://169.254.1.1/')).toBe(false);
+      expect(isPubliclyVerifiableUrl('http://100.64.0.1/')).toBe(false);
+    });
+
+    it('returns false for .local/.localhost hostnames', () => {
+      expect(isPubliclyVerifiableUrl('http://mypool.local/')).toBe(false);
+      expect(isPubliclyVerifiableUrl('http://mypool.localhost/')).toBe(false);
+    });
+
+    it('returns false for a bare hostname with no dot', () => {
+      expect(isPubliclyVerifiableUrl('http://mypool/')).toBe(false);
+    });
+
+    it('returns true for an ordinary public https URL', () => {
+      expect(isPubliclyVerifiableUrl('https://pool.elektron-net.org')).toBe(true);
+    });
+
+    it('returns true for a public IPv4 address', () => {
+      expect(isPubliclyVerifiableUrl('http://203.0.113.5/')).toBe(true);
     });
   });
 });

@@ -32,14 +32,92 @@ export function slugifySelfReportedName(name: string): string {
   return slug.length > 0 ? slug : 'pool';
 }
 
+function isPrivateOrLoopbackIPv4(hostname: string): boolean {
+  const match = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (!match) {
+    return false;
+  }
+  const a = Number(match[1]);
+  const b = Number(match[2]);
+  if (a > 255 || b > 255 || Number(match[3]) > 255 || Number(match[4]) > 255) {
+    return false; // not a valid IPv4 literal at all -- let URL parsing have already handled that
+  }
+  if (a === 0) return true; // "this network"
+  if (a === 10) return true; // 10.0.0.0/8
+  if (a === 127) return true; // loopback
+  if (a === 169 && b === 254) return true; // link-local
+  if (a === 172 && b >= 16 && b <= 31) return true; // 172.16.0.0/12
+  if (a === 192 && b === 168) return true; // 192.168.0.0/16
+  if (a === 100 && b >= 64 && b <= 127) return true; // 100.64.0.0/10 (carrier-grade NAT)
+  return false;
+}
+
+function isPrivateOrLoopbackIPv6(hostname: string): boolean {
+  const h = hostname.replace(/^\[|\]$/g, '').toLowerCase();
+  if (h === '::1') return true; // loopback
+  if (h.startsWith('fe80:')) return true; // link-local
+  if (/^f[cd][0-9a-f]{2}:/.test(h)) return true; // unique local, fc00::/7
+  return false;
+}
+
+/**
+ * A purely structural check (no DNS lookup, no HTTP request -- the indexer
+ * must never make outbound requests to an arbitrary, attacker-controlled
+ * URL found in a coinbase). Rejects anything that could not possibly be
+ * reachable/checkable by anyone other than the pool's own operator: no
+ * URL, a non-http(s) scheme, localhost/loopback/link-local/private-range
+ * hosts, or a bare hostname with no dot (never a real public domain). Does
+ * NOT verify the pool actually controls the domain -- only that the URL is
+ * not obviously local-only.
+ */
+export function isPubliclyVerifiableUrl(url: string | null | undefined): boolean {
+  const trimmed = (url ?? '').trim();
+  if (trimmed.length === 0) {
+    return false;
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    return false;
+  }
+
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    return false;
+  }
+
+  const hostname = parsed.hostname.toLowerCase();
+  if (hostname.length === 0 || hostname === 'localhost' || hostname === '0.0.0.0' ||
+    hostname.endsWith('.local') || hostname.endsWith('.localhost')) {
+    return false;
+  }
+
+  if (isPrivateOrLoopbackIPv4(hostname) || isPrivateOrLoopbackIPv6(hostname)) {
+    return false;
+  }
+
+  if (!hostname.includes('.') && !hostname.includes(':')) {
+    return false; // a bare hostname (e.g. "router", "mypool") is never a real public domain
+  }
+
+  return true;
+}
+
 class SelfReportedPoolsRepository {
 
   /**
    * Resolves (creating if necessary) a `pools` row for a self-reported,
-   * unverified pool name. Scoped to `unique_id < 0` -- real registered
-   * pools always have a positive unique_id (assigned by the pools-v2.json
-   * project) and the generic unknown pool uses 0, so a self-declared name
-   * identical to a real pool's name can never resolve to that real pool's
+   * unverified pool name that also declared a publicly verifiable URL --
+   * callers MUST check isPubliclyVerifiableUrl() themselves first and route
+   * anything else to the "Private Pools" bucket instead (PoolsRepository.
+   * $getPrivatePool()); this method does not check it again.
+   *
+   * Scoped to `unique_id < -1` -- real registered pools always have a
+   * positive unique_id (assigned by the pools-v2.json project), the
+   * generic unknown pool uses 0, and -1 is permanently reserved for the
+   * "Private Pools" bucket, so a self-declared name identical to a real
+   * pool's name (or to "Private Pools" itself) can never resolve to that
    * row here. Without this scoping, an attacker could self-declare e.g.
    * "Foundry USA" and have their blocks silently folded into the real
    * pool's hashrate/luck stats -- this way it instead gets its own,
@@ -68,7 +146,7 @@ class SelfReportedPoolsRepository {
 
   private async $findSelfReportedPoolByName(name: string): Promise<PoolTag | null> {
     const [rows]: any[] = await DB.query(
-      'SELECT id, unique_id AS uniqueId, name, link, slug FROM pools WHERE name = ? AND unique_id < 0 LIMIT 1',
+      'SELECT id, unique_id AS uniqueId, name, link, slug FROM pools WHERE name = ? AND unique_id < -1 LIMIT 1',
       [name]
     );
     return rows.length > 0 ? (rows[0] as PoolTag) : null;
@@ -76,25 +154,31 @@ class SelfReportedPoolsRepository {
 
   private async $createPool(name: string, url: string): Promise<PoolTag> {
     const baseSlug = slugifySelfReportedName(name);
+    // Placeholder unique_id: any non-negative value works here, since it is
+    // immediately overwritten below once the row's real id exists (a
+    // duplicate placeholder briefly shared with other freshly-created rows
+    // is harmless -- nothing looks it up by unique_id until after the fixup).
     const [insertResult]: any = await DB.query(
-      'INSERT INTO pools(name, link, addresses, regexes, slug, unique_id) VALUES (?, ?, "[]", "[]", ?, -1)',
+      'INSERT INTO pools(name, link, addresses, regexes, slug, unique_id) VALUES (?, ?, "[]", "[]", ?, 0)',
       [name, url, baseSlug]
     );
     const id = insertResult.insertId;
 
-    // unique_id must end up unique per self-reported pool (see class doc
-    // comment), which can only be derived from the row's own auto
-    // increment id once it exists -- hence the follow-up UPDATE rather than
-    // computing it up front. Also disambiguate the slug here if another
-    // pool (self-reported or registered) already has it: `slug` carries no
-    // unique constraint in this schema, but the pool-detail page's routing
-    // assumes one in practice.
+    // unique_id must end up unique per self-reported pool and <= -2 (see
+    // class doc comment: -1 is reserved for "Private Pools"), which can
+    // only be derived from the row's own auto increment id once it exists
+    // -- hence the follow-up UPDATE rather than computing it up front. Also
+    // disambiguate the slug here if another pool (self-reported or
+    // registered) already has it: `slug` carries no unique constraint in
+    // this schema, but the pool-detail page's routing assumes one in
+    // practice.
     const slugTaken = await this.$isSlugTaken(baseSlug, id);
     const finalSlug = slugTaken ? `${baseSlug}${id}`.slice(0, MAX_SLUG_LENGTH) : baseSlug;
+    const uniqueId = -(id + 1);
 
-    await DB.query('UPDATE pools SET unique_id = ?, slug = ? WHERE id = ?', [-id, finalSlug, id]);
+    await DB.query('UPDATE pools SET unique_id = ?, slug = ? WHERE id = ?', [uniqueId, finalSlug, id]);
 
-    return { id, uniqueId: -id, name, link: url, slug: finalSlug } as PoolTag;
+    return { id, uniqueId, name, link: url, slug: finalSlug } as PoolTag;
   }
 
   private async $isSlugTaken(slug: string, excludingId: number): Promise<boolean> {
@@ -108,7 +192,8 @@ class SelfReportedPoolsRepository {
    * pool set bounded to the MAX_TRACKED_POOLS best-performing names by
    * block count, and separately removes any self-reported pool that hasn't
    * found a block in INACTIVITY_THRESHOLD_SECONDS, regardless of rank.
-   * Never touches a row with unique_id >= 0 (a registered or unknown pool).
+   * Never touches a row with unique_id >= -1 (a registered pool, the
+   * unknown pool, or the "Private Pools" bucket).
    *
    * blocks.pool_id is a real foreign key into pools.id, and blocks are
    * never deleted (permanent chain history), so a pool being pruned has
@@ -124,7 +209,7 @@ class SelfReportedPoolsRepository {
         SELECT pools.id AS id, COUNT(blocks.height) AS blockCount, MAX(UNIX_TIMESTAMP(blocks.blockTimestamp)) AS lastSeen
         FROM pools
         LEFT JOIN blocks ON blocks.pool_id = pools.id AND blocks.stale = 0
-        WHERE pools.unique_id < 0
+        WHERE pools.unique_id < -1
         GROUP BY pools.id
       `);
 
@@ -149,7 +234,7 @@ class SelfReportedPoolsRepository {
   private async $reassignAndDeletePool(poolId: number, unknownPoolId: number): Promise<void> {
     try {
       await DB.query('UPDATE blocks SET pool_id = ? WHERE pool_id = ?', [unknownPoolId, poolId]);
-      await DB.query('DELETE FROM pools WHERE id = ? AND unique_id < 0', [poolId]);
+      await DB.query('DELETE FROM pools WHERE id = ? AND unique_id < -1', [poolId]);
     } catch (e) {
       logger.err(`Failed to prune self-reported pool ${poolId}: ` + (e instanceof Error ? e.message : e));
     }

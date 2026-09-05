@@ -39,7 +39,7 @@ import mempool from './mempool';
 import CpfpRepository from '../repositories/CpfpRepository';
 import { parseDATUMTemplateCreator, parseDMNDTemplateCreator } from '../utils/bitcoin-script';
 import { extractPoolIdentity } from './pool-identity-parser';
-import selfReportedPoolsRepository from '../repositories/SelfReportedPoolsRepository';
+import selfReportedPoolsRepository, { isPubliclyVerifiableUrl } from '../repositories/SelfReportedPoolsRepository';
 import database from '../database';
 import { getBlockFirstSeenFromLogs, getOldestLogTimestampFromLogs, scanLogsForBlocksFirstSeen } from '../utils/file-read';
 import txIndexRepository from '../repositories/TxIndexRepository';
@@ -509,13 +509,21 @@ class Blocks {
     // unverified, but deliberately given a real `pools` row so it shows up
     // in the existing ranking/hashrate/luck stats without any separate
     // infrastructure, rather than staying lumped into the generic unknown
-    // bucket with no attribution at all.
+    // bucket with no attribution at all -- UNLESS the declared URL is
+    // missing or not publicly verifiable (no URL, localhost, a private IP
+    // range, etc.), in which case there is no way to tell this claim apart
+    // from any other such claim, so it gets lumped into the shared "Private
+    // Pools" bucket instead of a ranking entry of its own.
     if (config.DATABASE.ENABLED === true && rawCoinbaseVout) {
       const identity = extractPoolIdentity(rawCoinbaseVout);
       if (identity.name) {
-        const selfReportedPool = await selfReportedPoolsRepository.$getOrCreatePool(identity.name, identity.url);
-        if (selfReportedPool) {
-          return selfReportedPool;
+        if (isPubliclyVerifiableUrl(identity.url)) {
+          const selfReportedPool = await selfReportedPoolsRepository.$getOrCreatePool(identity.name, identity.url);
+          if (selfReportedPool) {
+            return selfReportedPool;
+          }
+        } else {
+          return await poolsRepository.$getPrivatePool();
         }
       }
     }
