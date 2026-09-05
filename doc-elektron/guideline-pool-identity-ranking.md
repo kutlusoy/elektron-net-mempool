@@ -1,6 +1,6 @@
 # Elektron Net - `elektron-net-mempool` Pool Identity Ranking Guideline
 
-- **Version:** 0.4 (draft, implemented on `poolrang`, pending review; revised to reuse the existing `pools`/`blocks.pool_id` infrastructure instead of a separate table, then to route unverifiable self-reports into a shared "Private Pools" bucket instead of individual ranking entries, then to rename the generic unknown pool from "Solo Pool Miner" to "Unknown")
+- **Version:** 0.5 (draft, implemented on `poolrang`, pending review; revised to reuse the existing `pools`/`blocks.pool_id` infrastructure instead of a separate table, then to route unverifiable self-reports into a shared "Private Pools" bucket instead of individual ranking entries, then to rename the generic unknown pool from "Solo Pool Miner" to "Unknown", then to verify the upgrade path against a real database)
 - **Date:** September 05, 2026
 - **Audience:** `elektron-net-mempool` backend developers
 - **Reference implementation:** [`elektron-net-mempool`](https://github.com/kutlusoy/elektron-net-mempool) - `backend/src/api/blocks.ts` (`$findBlockMiner()`), `backend/src/repositories/SelfReportedPoolsRepository.ts`, `backend/src/api/pools-parser.ts` (`$insertPrivatePool()`), `backend/src/tasks/self-reported-pools-pruner.ts` - treat as ground truth for anything referenced below
@@ -20,6 +20,8 @@
 **Revision note (v0.3):** Ali's follow-up: a self-reported name with no URL, or with a URL pointing at a local/private address, should not get its own ranking entry - there is no way to tell such a claim apart from any other, so all of them should be "lumped into one pile" instead, leaving individual ranking entries only for pools that declared a URL that can actually be checked. This adds a second special bucket, `Private Pools` (`pools-parser.ts`'s `privatePool`, alongside the existing `unknownPool`), and a purely structural (no DNS lookup, no outbound request) `isPubliclyVerifiableUrl()` check that decides which bucket a self-reported name goes to. See Sections 2-5 below, all updated accordingly.
 
 **Revision note (v0.4):** Ali asked whether it would be simpler to just fold "Private Pools" into the plain unknown pool instead of keeping a second bucket. Decision: keep the two buckets separate (the distinction between "declared nothing" and "declared something unverifiable" is small but real, and the extra code for it is already written and tested), but rename the plain unknown pool's display name from "Solo Pool Miner" to "Unknown" so the two buckets read clearly as what they are ("Unknown" vs. "Private Pools") rather than one sounding like an actual pool brand. Pure display-name change (`pools-parser.ts`'s `unknownPool.name`); `slug` stays `"unknown"`, so nothing else (routing, `unique_id`) is affected.
+
+**Revision note (v0.5):** Ali asked directly whether updating an existing, already-running installation to this branch would work smoothly. Answered by actually doing it: seeded a real MariaDB 10.11 instance with data shaped like a mature existing install and ran every new code path against it (Section 8) rather than reasoning about it in the abstract. All 17 checks passed, closing the "not yet covered by an integration test" gap the checklist had carried since v0.1.
 
 ## 2. Why This Is Safe Despite Reusing `pools`/`blocks.pool_id`
 
@@ -91,9 +93,21 @@ None needed. Every existing endpoint and page that reads from `pools`/`blocks.po
 ## 7. Test Plan
 
 - Unit-tested (`__tests__/repositories/self-reported-pools-repository.test.ts`): the pure `normalizeSelfReportedName()`/`normalizeSelfReportedUrl()`/`slugifySelfReportedName()`/`isPubliclyVerifiableUrl()` helpers - null/empty/whitespace-only input, trimming, truncation at the 50/255 boundaries, slug fallback/character-stripping behavior, and every `isPubliclyVerifiableUrl()` rejection case (unparsable, non-http(s), localhost/loopback, each private IPv4/IPv6 range, `.local`/`.localhost`, bare hostname) alongside two positive cases. These are the only parts of this feature that do not require a live database, matching this codebase's existing convention of unit-testing pure logic only and leaving DB-touching repository methods to the (separate, DB-backed) integration test suite.
-- Not yet covered by an integration test in this revision: `$getOrCreatePool()`'s get-or-create behavior, slug disambiguation, `$pruneInactiveAndOverflow()`'s reassign-then-delete behavior, and `$insertPrivatePool()`/`$getPrivatePool()`, against a real database (see Section 8).
+- Integration-tested against a real MariaDB 10.11 instance (Section 8): `$getOrCreatePool()`'s get-or-create behavior, slug disambiguation, name-collision-with-a-real-pool rejection, `$pruneInactiveAndOverflow()`'s reassign-then-delete behavior (including that a naive `DELETE` without reassigning first is correctly rejected by the FK), and the `$insertPrivatePool()`/`$getPrivatePool()` lazy-create fallback.
 
-## 8. Checklist
+## 8. Upgrade Path for Existing Installations
+
+Ali asked directly: will updating an existing, already-running installation to this branch work smoothly? Verified by seeding a real MariaDB 10.11 database with data shaped like a mature existing install (schema version 112, the unknown pool still named "Solo Pool Miner", a registered pool with a positive `unique_id`, and historical blocks already attributed to both) and running this feature's exact queries against it. All of the following held:
+
+- **No migration step of any kind.** Confirmed by the diff itself: `database-migration.ts` is untouched, still at schema version 112. Nothing needs to run before the new code paths work against an existing, already-migrated database.
+- **"Private Pools" self-heals even if `migratePoolsJson()` never runs.** `PoolsRepository.$getPrivatePool()`'s lazy create-if-missing fallback (mirroring the existing `$getUnknownPool()` pattern) means the bucket gets created correctly the first time a block actually needs it - it does not depend on `AUTOMATIC_POOLS_UPDATE` being enabled or on an operator running `--update-pools` manually. Verified directly: querying for it before ever calling the insert path returns nothing, then the lazy-create path produces exactly one row with `unique_id = -1`.
+- **The "Solo Pool Miner" -> "Unknown" rename is cosmetic-only and eventually-consistent, not a functional dependency.** It only happens inside `migratePoolsJson()` (called from `$insertUnknownPool()`'s existing update-in-place branch), which per the existing (unchanged) gating logic may not run immediately after an upgrade if `AUTOMATIC_POOLS_UPDATE` is off. Until it does run, the pool keeps displaying as "Solo Pool Miner" - this changes nothing about routing, `unique_id`, or which blocks are attributed to it (verified: the row's `id` and `unique_id` are untouched by the rename, so every historical block referencing it stays correctly attributed throughout).
+- **A self-declared name identical to a real registered pool's name cannot hijack that pool's row.** Verified directly against a seeded "RealPool" (a positive `unique_id`): asking to self-report the exact same name produces a separate row with its own negative `unique_id`, never touching the real pool's row, its name, or its historical blocks.
+- **Pruning cannot corrupt chain history.** Verified that a plain `DELETE` on a pool row with attributed blocks is rejected by the foreign key (as designed), and that the actual reassign-then-delete sequence correctly folds those blocks back into "Unknown" before removing the now-unreferenced row - and that this same guard (`unique_id < -1`) makes it structurally impossible for the prune sweep to ever delete "Unknown" or "Private Pools" themselves, even if their ids were passed in by mistake.
+
+Net answer: yes, updating an existing installation to this branch is safe and requires no manual steps - pull the new code, rebuild/restart the backend, done. The only thing worth knowing is that the "Unknown" rename may lag behind the rest of the deploy by however long it takes `migratePoolsJson()` to next run (immediately if `AUTOMATIC_POOLS_UPDATE=true`, otherwise up to a week or until `--update-pools` is run manually) - purely cosmetic, nothing to act on.
+
+## 9. Checklist
 
 - [x] `SelfReportedPoolsRepository.ts`: `$getOrCreatePool()` (get-or-create, scoped to `unique_id < -1`), `$pruneInactiveAndOverflow()` (cap at 1000 + 90-day inactivity, reassign-then-delete), `isPubliclyVerifiableUrl()` (structural only, no network access)
 - [x] `pools-parser.ts`/`PoolsRepository.ts`: "Private Pools" bucket (`privatePool`, `$insertPrivatePool()`, `$getPrivatePool()`), `unique_id = -1` reserved
@@ -101,17 +115,17 @@ None needed. Every existing endpoint and page that reads from `pools`/`blocks.po
 - [x] `self-reported-pools-pruner.ts`: daily periodic task, wired up in `index.ts` alongside `poolsUpdater`
 - [x] Renamed the generic unknown pool's display name from "Solo Pool Miner" to "Unknown" (`pools-parser.ts`), including the frontend's hardcoded fallback string in `eight-blocks.component.html`
 - [x] Unit tests for the pure normalization/slugify/URL-verifiability helpers
-- [ ] Integration test against a real database for `$getOrCreatePool()`/`$pruneInactiveAndOverflow()`/`$insertPrivatePool()`
+- [x] Integration test against a real MariaDB 10.11 instance, seeded to look like an existing installation, for `$getOrCreatePool()`/`$pruneInactiveAndOverflow()`/`$insertPrivatePool()`/`$getPrivatePool()` (Section 8)
 - [ ] Live-test on a syncing node to confirm self-reported pools actually appear in the existing ranking page as new blocks arrive, and that unverifiable ones land in "Private Pools" instead, before merging to `main`
 
-## 9. Non-Goals for This Revision
+## 10. Non-Goals for This Revision
 
 - No historical backfill of blocks indexed before this feature shipped - only blocks resolved through `$findBlockMiner()` from here on can create or grow a self-reported pool's block count.
 - No visual distinction between self-reported and registered pools anywhere in the frontend (Section 2 - Ali's explicit decision). "Private Pools" is visually just another pool row, the same as any registered or individually-tracked self-reported one.
 - No fuzzy name matching or normalization beyond trim/truncate - two self-declared names that differ by punctuation or case are different pools.
 - No live verification of a declared URL (DNS lookup, HTTP request, ownership proof) - `isPubliclyVerifiableUrl()` is a structural check only (Section 4).
 
-## 10. Open Questions
+## 11. Open Questions
 
 1. Is 90 days the right inactivity threshold, and is ranking purely by raw block count (ignoring difficulty/network growth over that window) good enough for the overflow cutoff? Currently fixed constants in `SelfReportedPoolsRepository.ts`. Deferred until there is a concrete reason to tune them.
 2. Should `$pruneInactiveAndOverflow()`'s daily cadence be configurable? Currently fixed in `self-reported-pools-pruner.ts`. Deferred for the same reason.
