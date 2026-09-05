@@ -39,7 +39,7 @@ import mempool from './mempool';
 import CpfpRepository from '../repositories/CpfpRepository';
 import { parseDATUMTemplateCreator, parseDMNDTemplateCreator } from '../utils/bitcoin-script';
 import { extractPoolIdentity } from './pool-identity-parser';
-import poolIdentityStatsRepository from '../repositories/PoolIdentityStatsRepository';
+import selfReportedPoolsRepository from '../repositories/SelfReportedPoolsRepository';
 import database from '../database';
 import { getBlockFirstSeenFromLogs, getOldestLogTimestampFromLogs, scanLogsForBlocksFirstSeen } from '../utils/file-read';
 import txIndexRepository from '../repositories/TxIndexRepository';
@@ -340,7 +340,7 @@ class Blocks {
       if (providedPool) {
         pool = providedPool;
       } else if (coinbaseTx !== undefined) {
-        pool = await this.$findBlockMiner(coinbaseTx);
+        pool = await this.$findBlockMiner(coinbaseTx, transactions[0]?.vout);
       } else {
         if (config.DATABASE.ENABLED === true) {
           pool = await poolsRepository.$getUnknownPool();
@@ -468,11 +468,18 @@ class Blocks {
   /**
    * Try to find which miner found the block
    * @param txMinerInfo
+   * @param rawCoinbaseVout the coinbase transaction's *unstripped* vout array
+   * (i.e. `transactions[0].vout`, not `txMinerInfo.vout` -- the latter has
+   * already had its scriptpubkey/scriptpubkey_type and zero-value outputs
+   * stripped by transactionUtils.stripCoinbaseTransaction(), which would
+   * silently hide any OP_RETURN pool-identity output). Only used as a
+   * fallback when the registry match fails; omit it (e.g. from a caller
+   * that has no coinbase at all) to skip the self-reported lookup entirely.
    * @returns
    *
    * @asyncUnsafe
    */
-  private async $findBlockMiner(txMinerInfo: TransactionMinerInfo | undefined): Promise<PoolTag> {
+  private async $findBlockMiner(txMinerInfo: TransactionMinerInfo | undefined, rawCoinbaseVout?: IEsploraApi.Vout[]): Promise<PoolTag> {
     if (txMinerInfo === undefined || txMinerInfo.vout.length < 1) {
       if (config.DATABASE.ENABLED === true) {
         return await poolsRepository.$getUnknownPool();
@@ -493,6 +500,24 @@ class Blocks {
     const pool = poolsParser.matchBlockMiner(txMinerInfo.vin[0].scriptsig, addresses || [], pools);
     if (pool) {
       return pool;
+    }
+
+    // Elektron Net: the registry match failed (this block would otherwise
+    // be tagged "Solo Pool Miner"/unknown) -- see if the pool self-reported
+    // an identity via the coinbase OP_RETURN outputs instead (see
+    // doc-elektron/guideline-pool-identity-ranking.md). Self-reported and
+    // unverified, but deliberately given a real `pools` row so it shows up
+    // in the existing ranking/hashrate/luck stats without any separate
+    // infrastructure, rather than staying lumped into the generic unknown
+    // bucket with no attribution at all.
+    if (config.DATABASE.ENABLED === true && rawCoinbaseVout) {
+      const identity = extractPoolIdentity(rawCoinbaseVout);
+      if (identity.name) {
+        const selfReportedPool = await selfReportedPoolsRepository.$getOrCreatePool(identity.name, identity.url);
+        if (selfReportedPool) {
+          return selfReportedPool;
+        }
+      }
     }
 
     if (config.DATABASE.ENABLED === true) {
@@ -1191,7 +1216,7 @@ class Blocks {
         }
       }
 
-      const pool = await this.$findBlockMiner(transactionUtils.stripCoinbaseTransaction(transactions[0]));
+      const pool = await this.$findBlockMiner(transactionUtils.stripCoinbaseTransaction(transactions[0]), transactions[0]?.vout);
       const accelerations = mempool.getAccelerations();
 
       const processingResult = await blockProcessor.$processNewBlock(
@@ -1462,21 +1487,6 @@ class Blocks {
 
     if (Common.indexingEnabled()) {
       await blocksRepository.$saveBlockInDatabase(blockExtended);
-
-      // Elektron Net: only for a block newly reaching this point (the
-      // early-return above skips this for anything already in the DB), so
-      // this counts each block exactly once and never rescans history --
-      // see doc-elektron/guideline-pool-identity-ranking.md. Excludes stale
-      // blocks, matching every other pool ranking/stats query in this repo.
-      // Reuses the coinbase vout already in `transactions` (the raw,
-      // unstripped array -- transactionUtils.stripCoinbaseTransaction()
-      // drops zero-value outputs and their scriptpubkey/scriptpubkey_type,
-      // which would silently discard every OP_RETURN output), so this adds
-      // no extra RPC call.
-      if (!block.stale) {
-        const poolIdentity = extractPoolIdentity(transactions[0].vout);
-        await poolIdentityStatsRepository.$trackBlock(poolIdentity.name, poolIdentity.url, block.height, block.timestamp);
-      }
     }
 
     return blockExtended;
