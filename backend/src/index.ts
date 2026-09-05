@@ -21,6 +21,7 @@ import syncAssets from './sync-assets';
 import icons from './api/liquid/icons';
 import { Common } from './api/common';
 import poolsUpdater from './tasks/pools-updater';
+import selfReportedPoolsPruner from './tasks/self-reported-pools-pruner';
 import indexer from './indexer';
 import nodesRoutes from './api/explorer/nodes.routes';
 import channelsRoutes from './api/explorer/channels.routes';
@@ -247,6 +248,7 @@ class Server {
     }
 
     void poolsUpdater.$startService();
+    void selfReportedPoolsPruner.$startService();
   }
 
   /** @asyncSafe */

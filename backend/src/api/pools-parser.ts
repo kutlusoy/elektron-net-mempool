@@ -16,12 +16,30 @@ class PoolsParser {
     'id': 0,
     // Elektron Net's UTXO attestation rule forbids any scriptSig byte beyond the
     // fixed coinbase template, so solo miners can't be tagged in the coinbase
-    // either - this label covers both solo pool software and direct CPU miners.
-    'name': 'Solo Pool Miner',
+    // either - this label covers both solo pool software and direct CPU miners,
+    // and any self-reported identity that failed the publicly-verifiable-URL
+    // check (see doc-elektron/guideline-pool-identity-ranking.md) is kept
+    // separate from this one, under privatePool below.
+    'name': 'Unknown',
     'link': 'https://github.com/kutlusoy/elektron-net-pool',
     'regexes': '[]',
     'addresses': '[]',
     'slug': 'unknown'
+  };
+  // Bucket for a self-reported pool identity that could not be verified as
+  // a distinct public operator (no URL declared, or the URL points at a
+  // local/private address - see doc-elektron/guideline-pool-identity-ranking.md).
+  // Distinct from unknownPool above, which is for blocks that declared no
+  // identity at all: this one is for blocks that tried to, but could not
+  // be told apart from any other such claim, so they are lumped together
+  // rather than each getting their own ranking entry.
+  privatePool: any = {
+    'id': 0,
+    'name': 'Private Pools',
+    'link': '',
+    'regexes': '[]',
+    'addresses': '[]',
+    'slug': 'private'
   };
 
   public setMiningPools(pools): void {
@@ -45,8 +63,9 @@ class PoolsParser {
     redisCache.setIgnoreBlocksCache();
 
     await this.$insertUnknownPool();
+    await this.$insertPrivatePool();
 
-    // Always re-check Solo Pool Miner-tagged blocks against the current pool
+    // Always re-check Unknown-tagged blocks against the current pool
     // list, not only when a pool's own record changed this run: our pool
     // list is small and updated manually, so a block can easily get mined
     // and indexed before its pool's address is added. Cheap for our indexed
@@ -193,6 +212,39 @@ class PoolsParser {
       }
     } catch (e) {
       logger.err(`Unable to insert or update "${this.unknownPool.name}" mining pool. Reason: ${e instanceof Error ? e.message : e}`);
+    }
+  }
+
+  /**
+   * Manually add the 'private pools' bucket -- see doc-elektron/guideline-pool-identity-ranking.md.
+   * unique_id -1 is permanently reserved for this row: self-reported,
+   * individually-tracked pools (SelfReportedPoolsRepository) are always
+   * given unique_id <= -2, so they can never collide with it.
+   * @asyncSafe
+   */
+  public async $insertPrivatePool(): Promise<void> {
+    if (!config.DATABASE.ENABLED) {
+      return;
+    }
+
+    try {
+      const [rows]: any[] = await DB.query({ sql: `SELECT name from pools where slug="${this.privatePool.slug}"`, timeout: 120000 });
+      if (rows.length === 0) {
+        await DB.query({
+          sql: `INSERT INTO pools(name, link, regexes, addresses, slug, unique_id)
+          VALUES("${this.privatePool.name}", "${this.privatePool.link}", "[]", "[]", "${this.privatePool.slug}", -1);
+        `});
+      } else {
+        await DB.query(`UPDATE pools
+          SET name='${this.privatePool.name}', link='${this.privatePool.link}',
+          regexes='[]', addresses='[]',
+          slug='${this.privatePool.slug}',
+          unique_id=-1
+          WHERE slug='${this.privatePool.slug}'
+        `);
+      }
+    } catch (e) {
+      logger.err(`Unable to insert or update "${this.privatePool.name}" mining pool. Reason: ${e instanceof Error ? e.message : e}`);
     }
   }
 
