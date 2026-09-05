@@ -7,7 +7,7 @@ import cpfpRepository from '../repositories/CpfpRepository';
 import { RowDataPacket } from 'mysql2';
 
 class DatabaseMigration {
-  private static currentVersion = 112;
+  private static currentVersion = 113;
   private queryTimeout = 3600_000;
   private statisticsAddedIndexed = false;
   private uniqueLogs: string[] = [];
@@ -1266,6 +1266,25 @@ class DatabaseMigration {
         INDEX (height)
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8;`, await this.$checkIfTableExists('tx_index'));
       await this.updateToSchemaVersion(112);
+    }
+
+    // Elektron Net: per-name block counter for self-reported pool identity
+    // (see doc-elektron/guideline-pool-identity-ranking.md), populated
+    // incrementally as new blocks are indexed rather than backfilled, and
+    // pruned to the top MAX_TRACKED_POOLS names by block_count so a flood of
+    // distinct self-declared names cannot grow this table without bound.
+    if (databaseSchemaVersion < 113 && isBitcoin === true) {
+      await this.$executeQuery(`CREATE TABLE IF NOT EXISTS pool_identity_stats (
+        pool_identity_name varchar(191) NOT NULL,
+        pool_identity_url varchar(255) NULL,
+        block_count int(10) unsigned NOT NULL DEFAULT 0,
+        first_seen_height int(10) unsigned NOT NULL,
+        last_seen_height int(10) unsigned NOT NULL,
+        last_seen_time int(10) unsigned NOT NULL,
+        PRIMARY KEY (pool_identity_name),
+        INDEX (block_count)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;`, await this.$checkIfTableExists('pool_identity_stats'));
+      await this.updateToSchemaVersion(113);
     }
   }
 

@@ -11,11 +11,13 @@ import PricesRepository from '../../repositories/PricesRepository';
 import AccelerationRepository from '../../repositories/AccelerationRepository';
 import accelerationApi from '../services/acceleration';
 import { handleError } from '../../utils/api';
+import poolIdentityStatsRepository from '../../repositories/PoolIdentityStatsRepository';
 
 class MiningRoutes {
   public initRoutes(app: Application) {
     app
       .get(config.MEMPOOL.API_URL_PREFIX + 'mining/pools', this.$listPools)
+      .get(config.MEMPOOL.API_URL_PREFIX + 'mining/pool-identity/ranking', this.$getPoolIdentityRanking)
       .get(config.MEMPOOL.API_URL_PREFIX + 'mining/pools/:interval', this.$getPools)
       .get(config.MEMPOOL.API_URL_PREFIX + 'mining/pool/:slug/hashrate', this.$getPoolHistoricalHashrate)
       .get(config.MEMPOOL.API_URL_PREFIX + 'mining/pool/:slug/blocks', this.$getPoolBlocks)
@@ -108,6 +110,27 @@ class MiningRoutes {
       } else {
         handleError(req, res, 500, 'Failed to get blocks for pool');
       }
+    }
+  }
+
+  // Self-reported (unverified) pool identity ranking -- see
+  // doc-elektron/guideline-pool-identity-ranking.md. Never merged with, and
+  // entirely independent of, the registry-matched $listPools above.
+  private async $getPoolIdentityRanking(req: Request, res: Response): Promise<void> {
+    try {
+      res.header('Pragma', 'public');
+      res.header('Cache-control', 'public');
+      res.setHeader('Expires', new Date(Date.now() + 1000 * 60).toUTCString());
+
+      const ranking = await poolIdentityStatsRepository.$getRanking();
+      res.header('X-total-count', ranking.length.toString());
+      if (ranking.length === 0) {
+        res.status(204).send();
+      } else {
+        res.json(ranking);
+      }
+    } catch (e) {
+      handleError(req, res, 500, 'Failed to get pool identity ranking');
     }
   }
 

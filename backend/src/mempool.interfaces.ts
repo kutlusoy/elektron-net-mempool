@@ -28,6 +28,19 @@ export interface PoolStats extends PoolInfo {
   emptyBlocks: number;
 }
 
+// Self-reported (unverified) pool identity ranking, aggregated from the
+// coinbase OP_RETURN fields pool-identity-parser.ts extracts -- see
+// doc-elektron/guideline-pool-identity-ranking.md. Never merged with
+// PoolInfo/PoolStats, which stay registry-matched and verified.
+export interface PoolIdentityStat {
+  name: string;
+  url: string | null;
+  blockCount: number;
+  firstSeenHeight: number;
+  lastSeenHeight: number;
+  lastSeenTime: number;
+}
+
 export enum TemplateAlgorithm {
   legacy = 0,
   clusterMempool = 1,

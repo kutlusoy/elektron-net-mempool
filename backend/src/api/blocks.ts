@@ -38,6 +38,8 @@ import blockProcessor, { BlockProcessingResult, detectTemplateAlgorithm, saveCpf
 import mempool from './mempool';
 import CpfpRepository from '../repositories/CpfpRepository';
 import { parseDATUMTemplateCreator, parseDMNDTemplateCreator } from '../utils/bitcoin-script';
+import { extractPoolIdentity } from './pool-identity-parser';
+import poolIdentityStatsRepository from '../repositories/PoolIdentityStatsRepository';
 import database from '../database';
 import { getBlockFirstSeenFromLogs, getOldestLogTimestampFromLogs, scanLogsForBlocksFirstSeen } from '../utils/file-read';
 import txIndexRepository from '../repositories/TxIndexRepository';
@@ -1460,6 +1462,21 @@ class Blocks {
 
     if (Common.indexingEnabled()) {
       await blocksRepository.$saveBlockInDatabase(blockExtended);
+
+      // Elektron Net: only for a block newly reaching this point (the
+      // early-return above skips this for anything already in the DB), so
+      // this counts each block exactly once and never rescans history --
+      // see doc-elektron/guideline-pool-identity-ranking.md. Excludes stale
+      // blocks, matching every other pool ranking/stats query in this repo.
+      // Reuses the coinbase vout already in `transactions` (the raw,
+      // unstripped array -- transactionUtils.stripCoinbaseTransaction()
+      // drops zero-value outputs and their scriptpubkey/scriptpubkey_type,
+      // which would silently discard every OP_RETURN output), so this adds
+      // no extra RPC call.
+      if (!block.stale) {
+        const poolIdentity = extractPoolIdentity(transactions[0].vout);
+        await poolIdentityStatsRepository.$trackBlock(poolIdentity.name, poolIdentity.url, block.height, block.timestamp);
+      }
     }
 
     return blockExtended;
