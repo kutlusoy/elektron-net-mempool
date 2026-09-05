@@ -5,9 +5,9 @@ import logger from '../logger';
 
 // See doc-elektron/guideline-pool-identity-ranking.md. Runs occasionally,
 // not per block: keeps the self-reported pools SelfReportedPoolsRepository
-// creates bounded (best 1000 by block count, and evicts anything that has
-// gone quiet for a long time), without adding load to the per-block
-// indexing path.
+// creates bounded, evicting a pool only once it has both fallen out of the
+// top 1000 by block count AND gone a full year without a new block,
+// without adding load to the per-block indexing path.
 const PRUNE_INTERVAL_MS = 24 * 60 * 60 * 1000; // once a day
 
 class SelfReportedPoolsPruner {

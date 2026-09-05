@@ -13,7 +13,7 @@ const MAX_NAME_LENGTH = 50; // pools.name varchar(50)
 const MAX_SLUG_LENGTH = 50; // pools.slug char(50)
 const MAX_URL_LENGTH = 255; // pools.link varchar(255)
 const MAX_TRACKED_POOLS = 1000;
-const INACTIVITY_THRESHOLD_SECONDS = 90 * 24 * 60 * 60; // 90 days
+const INACTIVITY_THRESHOLD_SECONDS = 365 * 24 * 60 * 60; // 1 year
 
 export function normalizeSelfReportedName(name: string | null | undefined): string | null {
   const trimmed = (name ?? '').trim();
@@ -188,12 +188,15 @@ class SelfReportedPoolsRepository {
 
   /**
    * Maintenance sweep, meant to run occasionally (see
-   * self-reported-pools-pruner.ts), not per block: keeps the self-reported
-   * pool set bounded to the MAX_TRACKED_POOLS best-performing names by
-   * block count, and separately removes any self-reported pool that hasn't
-   * found a block in INACTIVITY_THRESHOLD_SECONDS, regardless of rank.
-   * Never touches a row with unique_id >= -1 (a registered pool, the
-   * unknown pool, or the "Private Pools" bucket).
+   * self-reported-pools-pruner.ts), not per block: a self-reported pool is
+   * only ever pruned once it has fallen out of the MAX_TRACKED_POOLS
+   * best-performing names by block count AND has gone at least
+   * INACTIVITY_THRESHOLD_SECONDS without a new block -- both conditions are
+   * required, so a pool keeps its row for as long as it either still ranks
+   * in the top MAX_TRACKED_POOLS or has reported a block within the last
+   * year, whichever keeps it around longer. Never touches a row with
+   * unique_id >= -1 (a registered pool, the unknown pool, or the "Private
+   * Pools" bucket).
    *
    * blocks.pool_id is a real foreign key into pools.id, and blocks are
    * never deleted (permanent chain history), so a pool being pruned has
@@ -214,15 +217,19 @@ class SelfReportedPoolsRepository {
       `);
 
       const nowSeconds = Math.floor(Date.now() / 1000);
-      const overflowIds: number[] = [...rows]
-        .sort((a: any, b: any) => b.blockCount - a.blockCount)
-        .slice(MAX_TRACKED_POOLS)
-        .map((row: any) => row.id);
-      const inactiveIds: number[] = rows
-        .filter((row: any) => row.lastSeen === null || (nowSeconds - row.lastSeen) > INACTIVITY_THRESHOLD_SECONDS)
-        .map((row: any) => row.id);
+      const overflowIds = new Set<number>(
+        [...rows]
+          .sort((a: any, b: any) => b.blockCount - a.blockCount)
+          .slice(MAX_TRACKED_POOLS)
+          .map((row: any) => row.id)
+      );
+      const inactiveIds = new Set<number>(
+        rows
+          .filter((row: any) => row.lastSeen === null || (nowSeconds - row.lastSeen) > INACTIVITY_THRESHOLD_SECONDS)
+          .map((row: any) => row.id)
+      );
 
-      const toPrune = [...new Set([...overflowIds, ...inactiveIds])];
+      const toPrune = [...overflowIds].filter((id) => inactiveIds.has(id));
       for (const poolId of toPrune) {
         await this.$reassignAndDeletePool(poolId, unknownPoolId);
       }
