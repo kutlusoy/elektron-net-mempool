@@ -4,10 +4,12 @@
 - **Date:** September 05, 2026
 - **Audience:** `elektron-net-mempool` backend developers
 - **Reference implementation:** [`elektron-net-mempool`](https://github.com/kutlusoy/elektron-net-mempool) - `backend/src/api/blocks.ts` (`$findBlockMiner()`), `backend/src/repositories/SelfReportedPoolsRepository.ts`, `backend/src/api/pools-parser.ts` (`$insertPrivatePool()`), `backend/src/tasks/self-reported-pools-pruner.ts` - treat as ground truth for anything referenced below
-- **See also:** [`guideline-pool-identity-detection.md`](./guideline-pool-identity-detection.md) (companion document; Section 10, Open Question 1, is what this document resolves)
+- **See also:** [`fix-report-pool-identity-utxo-attestation.md`](./fix-report-pool-identity-utxo-attestation.md) (its companion document, `guideline-pool-identity-detection.md`, was removed there; see its Section 4 for what this means for the feature described below)
 
 - Requirement-level words follow standard usage: **MUST** = mandatory, **SHOULD** = strongly recommended, **MAY** = optional.
 - Never use the em dash character in this document or its follow-up code comments; use a hyphen and spaces instead, as done throughout.
+
+**Status note (September 6, 2026):** the on-chain coinbase detection this feature ran on (`guideline-pool-identity-detection.md`, since removed) turned out to invalidate any block that used it, so both `elektron-net-pool` and `elektron-net-ppool` reverted it. No new self-reported pool can be created from here on; everything below still describes the ranking/pruning mechanics correctly for any rows that already exist, but the feature as a whole is dormant pending a decision (see `fix-report-pool-identity-utxo-attestation.md` Section 4).
 
 ---
 
