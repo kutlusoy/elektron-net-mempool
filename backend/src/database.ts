@@ -23,6 +23,10 @@ import { execSync } from 'child_process';
     connectionLimit: config.DATABASE.POOL_SIZE,
     supportBigNumbers: true,
     timezone: '+00:00',
+    // Return JSON columns as raw strings instead of having mysql2 auto-parse them.
+    // The app code parses these fields itself (see BlocksRepository etc.), so an
+    // auto-parsed value gets double-parsed and crashes on JSON.parse(String(array)).
+    jsonStrings: true,
   };
 
   /** @asyncUnsafe */
