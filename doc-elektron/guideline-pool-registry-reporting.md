@@ -1,6 +1,6 @@
 # Elektron Net - `elektron-net-mempool` Pool Registry Reporting Guideline
 
-- **Version:** 0.1 (planning, nothing implemented yet)
+- **Version:** 0.2 (implemented on `reporegistry`, pending review/merge and live testing before `main`)
 - **Date:** September 6, 2026
 - **Audience:** `elektron-net-mempool` backend developers
 - **Reference implementation:** `backend/src/tasks/pools-updater.ts` (the polling/SHA-diffing pattern this reuses), `backend/src/repositories/SelfReportedPoolsRepository.ts` and `backend/src/tasks/self-reported-pools-pruner.ts` (the dormant storage/ranking layer this finally gives a real data source)
@@ -18,8 +18,8 @@ The reverted on-chain pool-identity feature (`fix-report-pool-identity-utxo-atte
 
 A new repository, `github.com/kutlusoy/elektron-net-registry` (not created yet), holds two plain text files, each line self-describing and extended purely by fork + pull request, the same trust model already used for `pools-v2.json`:
 
-- `pools.txt`: one line per pool (both `ppool` and solo `pool` entries together), format `"Name"; "URL";`
-- `mempools.txt`: one line per known block-explorer instance, same format
+- `pools.txt`: one line per pool (both `ppool` and solo `pool` entries together), format `"Type"; "Name"; "URL";` where Type is `"PPLNS"` or `"SOLO"` (added after this section was first written; the type field is not used by the reporting/verification flow itself, kept for possible future filtered listings)
+- `mempools.txt`: one line per known block-explorer instance, format `"Name"; "URL";`
 
 Both `elektron-net-mempool` and the two pool repos point at this **one** repo URL via a single config value; each side's own updater derives whichever file(s) it needs and how to fetch/diff them, so nothing beyond that one URL needs configuring (mirrors how `MEMPOOL_POOLS_JSON_URL` already works today, generalized to a single base URL instead of two separately-configured endpoints).
 
@@ -32,26 +32,28 @@ Reporting is push-based and per-block, not periodic-match like the old registry-
 
 This binds trust to domain control, the same principle behind ACME HTTP-01 or Slack's URL verification challenge, without tokens, signatures, or any wallet involvement, and is identical for both pool types since neither needs a wallet, only their existing web server.
 
-## 3. What Changes in This Repo
+## 3. What Changed in This Repo
 
-- **New updater task**, modeled directly on `pools-updater.ts`: fetches `pools.txt` from the registry, parses `"Name"; "URL";` lines, keeps an in-memory/DB-backed map of known pool names to their registered URLs. Poll interval should be much shorter than `pools-v2.json`'s weekly cadence (open question below).
-- **New API endpoint** (exact path to be decided at implementation time) accepting a report: pool name plus block hash.
-- **Verification step**: look up the claimed name in the synced registry map, call back to the registered URL's confirmation endpoint (to be defined jointly with the pool repos, see their own planning documents) with the block hash, and only proceed on a positive, matching answer.
-- **Attribution**: on a confirmed report, attribute the referenced block the same way the old self-reported-pools code did, reusing `SelfReportedPoolsRepository` and the existing `pools`/`blocks.pool_id` ranking infrastructure (`guideline-pool-identity-ranking.md`), which has been sitting dormant since the on-chain source was removed. This is the first real, verified, ongoing data source that infrastructure will have had.
+- **`backend/src/api/pool-registry-parser.ts`** (new): parses `pools.txt`'s `"Type"; "Name"; "URL";` lines, skipping malformed ones rather than failing the whole registry.
+- **`backend/src/tasks/pool-registry-updater.ts`** (new): fetches `${POOL_REGISTRY_URL}/pools.txt` every `POOL_REGISTRY_UPDATE_DELAY` seconds (default 900, 15 minutes), keeps an in-memory `Map<name, entry>`. Unlike `pools-updater.ts`, this simply refetches on every poll rather than SHA-diffing against a git tree API; the files here are tiny (a few KB even with hundreds of entries) so the extra complexity of change detection was not worth it.
+- **`backend/src/api/pool-registry.routes.ts`** (new): `POST /api/v1/pool-registry/report`, body `{ name, blockHash }`. Looks up `name` in the synced registry map to get its **registered** URL (never the URL the caller supplied), calls back to `<url>/pool/identity/confirm?blockHash=<hash>` with a 5-second timeout, and only on `{ confirmed: true }` resolves/creates the pool via `SelfReportedPoolsRepository.$getOrCreatePool()` and attributes the block via the new `BlocksRepository.$updateBlockPool()`.
+- **`BlocksRepository.$updateBlockPool(hash, poolId)`** (new): a plain `UPDATE blocks SET pool_id = ? WHERE hash = ?`, used only by the report handler above once a claim is verified.
+- **Config**: `POOL_REGISTRY_URL` / `POOL_REGISTRY_UPDATE_DELAY` added to `config.ts`, the docker config template, `start.sh`, and the sample/fixture config files, following the exact pattern `POOLS_JSON_URL` already uses.
+- **Attribution reuse**: confirmed reports flow straight into `SelfReportedPoolsRepository` and the existing `pools`/`blocks.pool_id` ranking infrastructure (`guideline-pool-identity-ranking.md`), which had been sitting dormant since the on-chain source was removed. This is the first real, verified, ongoing data source that infrastructure has had.
 
-## 4. Open Questions
+## 4. Decisions Made
 
-1. Exact endpoint paths and payload shapes for both the incoming report and the outgoing confirmation callback; must be agreed with `elektron-net-pool`/`elektron-net-ppool` before implementation, since both sides need to match exactly.
-2. Registry poll interval. Weekly (today's `pools-v2.json` cadence) is too slow for prompt attribution; something in the 15-60 minute range seems more appropriate, needs a decision.
-3. Retry/timeout behavior if a pool's confirmation endpoint is briefly unreachable when a report comes in.
-4. Basic ingest validation for `pools.txt`/`mempools.txt` (duplicate names with different URLs, malformed lines), same category of problem `pools-v2.json` ingestion already has to handle.
-5. Whether `elektron-net-mempool` itself needs an entry in `mempools.txt` for anything code-driven, or whether that list is purely informational for pool operators to discover explorer instances manually.
+1. Endpoints: `POST /api/v1/pool-registry/report` (this repo) and `GET /pool/identity/confirm?blockHash=<hex>` (pool side), matching payload shapes on both ends, identical between `elektron-net-pool` and `elektron-net-ppool`.
+2. Registry poll interval: 15 minutes (not weekly like `pools-v2.json` - these files are small and prompt attribution matters more here).
+3. Retry/timeout: none. The confirmation callback has a 5-second timeout; on failure or a non-`true` answer, the report is simply not attributed. No retry, no queue.
+4. Ingest validation: malformed lines are skipped (parser returns only well-formed entries); a duplicate name in the source file overwrites the earlier one in the in-memory map (last one wins), no explicit dedup step needed beyond that.
+5. `elektron-net-mempool` does not need its own entry in `mempools.txt` for any code-driven purpose; that list is only consumed by the pool repos to discover where to send reports.
 
 ## 5. Checklist
 
-- [ ] `elektron-net-registry` repository created with `pools.txt` / `mempools.txt`
-- [ ] Registry updater task implemented (mirrors `pools-updater.ts`)
-- [ ] Report-receiving endpoint implemented
-- [ ] Callback verification implemented
-- [ ] Confirmed reports wired into `SelfReportedPoolsRepository` / ranking
-- [ ] Open questions above resolved and reflected here before implementation begins
+- [x] `elektron-net-registry` repository created with `pools.txt` / `mempools.txt`
+- [x] Registry updater task implemented (`pool-registry-updater.ts`)
+- [x] Report-receiving endpoint implemented
+- [x] Callback verification implemented
+- [x] Confirmed reports wired into `SelfReportedPoolsRepository` / ranking
+- [ ] Live-test on regtest/testnet (real found block, real report, real callback, real ranking entry) before merging to `main`

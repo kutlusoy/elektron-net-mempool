@@ -1135,6 +1135,24 @@ class BlocksRepository {
   }
 
   /**
+   * Attribute an already-indexed block to a pool, used by the pool-registry
+   * report handler once a report has been verified via callback (see
+   * doc-elektron/guideline-pool-registry-reporting.md). Never overwrites a
+   * registry-matched pool with a lower-confidence one -- callers are
+   * expected to have already checked matchBlockMiner() failed before
+   * reaching this.
+   * @asyncSafe
+   */
+  public async $updateBlockPool(hash: string, poolId: number): Promise<void> {
+    try {
+      await DB.query('UPDATE blocks SET pool_id = ? WHERE hash = ?', [poolId, hash]);
+    } catch (e) {
+      logger.err(`Cannot update block pool for ${hash}. Reason: ` + (e instanceof Error ? e.message : e));
+      throw e;
+    }
+  }
+
+  /**
    * Save coinbase addresses
    *
    * @param id
