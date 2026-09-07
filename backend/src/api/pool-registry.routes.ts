@@ -6,6 +6,9 @@ import { handleError } from '../utils/api';
 import poolRegistryUpdater from '../tasks/pool-registry-updater';
 import selfReportedPoolsRepository, { isPubliclyVerifiableUrl } from '../repositories/SelfReportedPoolsRepository';
 import blocksRepository from '../repositories/BlocksRepository';
+import blocks from './blocks';
+import websocketHandler from './websocket-handler';
+import { PoolTag } from '../mempool.interfaces';
 
 // See doc-elektron/guideline-pool-registry-reporting.md. Replaces the
 // reverted on-chain pool-identity coinbase outputs: a pool that finds a
@@ -84,10 +87,12 @@ class PoolRegistryRoutes {
 
       const attributed = await blocksRepository.$updateBlockPool(blockHash, pool.id);
       res.status(200).json({ attributed });
-      if (!attributed) {
+      if (attributed) {
+        this.$pushLiveUpdate(blockHash, pool);
+      } else {
         // Block not indexed yet - keep trying for a bit in the background,
         // now that the response has already gone out.
-        void this.$retryAttribution(blockHash, pool.id);
+        void this.$retryAttribution(blockHash, pool);
       }
     } catch (e) {
       logger.err(`Failed to process pool-registry report for block ${blockHash} from "${name}". Reason: ` +
@@ -103,11 +108,12 @@ class PoolRegistryRoutes {
    * has no caller left to report a failure to.
    * @asyncSafe
    */
-  private async $retryAttribution(blockHash: string, poolId: number): Promise<void> {
+  private async $retryAttribution(blockHash: string, pool: PoolTag): Promise<void> {
     for (let attempt = 1; attempt <= ATTRIBUTION_MAX_ATTEMPTS; attempt++) {
       await sleep(ATTRIBUTION_RETRY_DELAY_MS);
       try {
-        if (await blocksRepository.$updateBlockPool(blockHash, poolId)) {
+        if (await blocksRepository.$updateBlockPool(blockHash, pool.id)) {
+          this.$pushLiveUpdate(blockHash, pool);
           return;
         }
       } catch (e) {
@@ -116,7 +122,22 @@ class PoolRegistryRoutes {
         return;
       }
     }
-    logger.debug(`Gave up attributing block ${blockHash} to pool ${poolId} - still not indexed after ${ATTRIBUTION_MAX_ATTEMPTS} retries.`);
+    logger.debug(`Gave up attributing block ${blockHash} to pool ${pool.id} - still not indexed after ${ATTRIBUTION_MAX_ATTEMPTS} retries.`);
+  }
+
+  /**
+   * Patches the pool shown for this block in the in-memory recent-blocks
+   * cache and pushes it to already-connected websocket clients (see
+   * WebsocketHandler.handleBlockPoolUpdate), so a viewer already looking
+   * at this exact block sees the pool appear live, without needing to
+   * reload the page. A no-op, not an error, once the block has aged out
+   * of that cache - the database row (already correct at this point) is
+   * all that matters for anyone loading the page fresh after that.
+   */
+  private $pushLiveUpdate(blockHash: string, pool: PoolTag): void {
+    if (blocks.updateBlockPoolInMemory(blockHash, pool)) {
+      websocketHandler.handleBlockPoolUpdate();
+    }
   }
 
   /** @asyncUnsafe -- callers must try/catch */

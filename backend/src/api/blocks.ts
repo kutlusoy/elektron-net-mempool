@@ -66,6 +66,32 @@ class Blocks {
     this.blocks = blocks;
   }
 
+  /**
+   * Patches the pool shown for an already-cached recent block, for the
+   * pool-registry report handler (see
+   * doc-elektron/guideline-pool-registry-reporting.md): a report can be
+   * confirmed and attributed in the database after this block was already
+   * pushed to `this.blocks` with the fallback "Unknown" pool, so this
+   * updates the in-memory copy the same way, in place, so a follow-up
+   * websocket push (see WebsocketHandler.handleBlockPoolUpdate) reflects it
+   * without waiting for the next new block. No-op if the block has already
+   * aged out of the in-memory window - only the database row matters by
+   * then, and that one is already correct.
+   */
+  public updateBlockPoolInMemory(hash: string, pool: PoolTag): boolean {
+    const block = this.blocks.find(b => b.id === hash);
+    if (!block) {
+      return false;
+    }
+    block.extras.pool = {
+      id: pool.uniqueId,
+      name: pool.name,
+      slug: pool.slug,
+      minerNames: null,
+    };
+    return true;
+  }
+
   public getBlockSummaries(): BlockSummary[] {
     return this.blockSummaries;
   }

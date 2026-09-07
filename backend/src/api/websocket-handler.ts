@@ -524,6 +524,37 @@ class WebsocketHandler {
     }
   }
 
+  /**
+   * Re-broadcasts the current recent-blocks window after a pool-registry
+   * report gets confirmed and attributed (see
+   * doc-elektron/guideline-pool-registry-reporting.md and
+   * Blocks.updateBlockPoolInMemory) - deliberately not a full
+   * handleNewBlock(), since nothing else about the block changed, just the
+   * pool. Reuses the same 'blocks' message shape the frontend already
+   * applies in place (WebsocketService.handleResponse -> resetBlocks), so
+   * a viewer watching that exact block sees the pool appear without
+   * reloading, no frontend change needed.
+   */
+  handleBlockPoolUpdate() {
+    if (!this.webSocketServers.length) {
+      throw new Error('No WebSocket.Server have been set');
+    }
+
+    const recentBlocks = blocks.getBlocks().slice(-config.MEMPOOL.INITIAL_BLOCKS_AMOUNT);
+    this.updateSocketDataFields({ 'blocks': recentBlocks });
+
+    const response = JSON.stringify({ blocks: recentBlocks });
+    // TODO - Fix indentation after PR is merged
+    for (const server of this.webSocketServers) {
+    server.clients.forEach((client) => {
+      if (client.readyState !== WebSocket.OPEN) {
+        return;
+      }
+      this.send(client, response);
+    });
+    }
+  }
+
   handleNewStatistic(stats: OptimizedStatistic) {
     if (!this.webSocketServers.length) {
       throw new Error('No WebSocket.Server have been set');
