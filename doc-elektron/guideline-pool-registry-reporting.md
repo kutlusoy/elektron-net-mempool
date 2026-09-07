@@ -18,8 +18,8 @@ The reverted on-chain pool-identity feature (`fix-report-pool-identity-utxo-atte
 
 A new repository, `github.com/kutlusoy/elektron-net-registry` (not created yet), holds two plain text files, each line self-describing and extended purely by fork + pull request, the same trust model already used for `pools-v2.json`:
 
-- `pools.txt`: one line per pool (both `ppool` and solo `pool` entries together), format `"Type"; "Name"; "URL";` where Type is `"PPLNS"` or `"SOLO"` (added after this section was first written; the type field is not used by the reporting/verification flow itself, kept for possible future filtered listings)
-- `mempools.txt`: one line per known block-explorer instance, format `"Name"; "URL";`
+- `pools.txt`: one line per pool (both `ppool` and solo `pool` entries together), format `"Type", "Name", "URL";` where Type is `"PPLNS"` or `"SOLO"` (added after this section was first written; the type field is not used by the reporting/verification flow itself, kept for possible future filtered listings)
+- `mempools.txt`: one line per known block-explorer instance, format `"Name", "URL";`
 
 Both `elektron-net-mempool` and the two pool repos point at this **one** repo URL via a single config value; each side's own updater derives whichever file(s) it needs and how to fetch/diff them, so nothing beyond that one URL needs configuring (mirrors how `MEMPOOL_POOLS_JSON_URL` already works today, generalized to a single base URL instead of two separately-configured endpoints).
 
@@ -34,7 +34,7 @@ This binds trust to domain control, the same principle behind ACME HTTP-01 or Sl
 
 ## 3. What Changed in This Repo
 
-- **`backend/src/api/pool-registry-parser.ts`** (new): parses `pools.txt`'s `"Type"; "Name"; "URL";` lines, skipping malformed ones rather than failing the whole registry.
+- **`backend/src/api/pool-registry-parser.ts`** (new): parses `pools.txt`'s `"Type", "Name", "URL";` lines by extracting every quoted substring on the line, so it is agnostic to whatever separator sits between them (comma, semicolon, or nothing) - only the quoted content is ever read. Skips malformed lines rather than failing the whole registry.
 - **`backend/src/tasks/pool-registry-updater.ts`** (new): fetches `${POOL_REGISTRY_URL}/pools.txt` every `POOL_REGISTRY_UPDATE_DELAY` seconds (default 900, 15 minutes), keeps an in-memory `Map<name, entry>`. Unlike `pools-updater.ts`, this simply refetches on every poll rather than SHA-diffing against a git tree API; the files here are tiny (a few KB even with hundreds of entries) so the extra complexity of change detection was not worth it.
 - **`backend/src/api/pool-registry.routes.ts`** (new): `POST /api/v1/pool-registry/report`, body `{ name, blockHash }`. Looks up `name` in the synced registry map to get its **registered** URL (never the URL the caller supplied), calls back to `<url>/pool/identity/confirm?blockHash=<hash>` with a 5-second timeout, and only on `{ confirmed: true }` resolves/creates the pool via `SelfReportedPoolsRepository.$getOrCreatePool()` and attributes the block via the new `BlocksRepository.$updateBlockPool()`.
 - **`BlocksRepository.$updateBlockPool(hash, poolId)`** (new): a plain `UPDATE blocks SET pool_id = ? WHERE hash = ?`, used only by the report handler above once a claim is verified.

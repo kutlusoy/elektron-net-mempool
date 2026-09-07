@@ -1,8 +1,10 @@
 // Parses pools.txt from the shared elektron-net-registry repo (see
 // doc-elektron/guideline-pool-registry-reporting.md). Deliberately simple,
-// one entry per line, no tokens or signatures: `"Type"; "Name"; "URL";`
-// where Type is "PPLNS" or "SOLO". Malformed lines are skipped rather than
-// failing the whole registry.
+// one entry per line, no tokens or signatures: `"Type", "Name", "URL";`
+// where Type is "PPLNS" or "SOLO". The regex below only ever extracts
+// quoted substrings, so it is agnostic to whatever separator sits between
+// them (comma, semicolon, or nothing) -- only the quoted content is read.
+// Malformed lines are skipped rather than failing the whole registry.
 
 export interface RegistryPoolEntry {
   type: 'PPLNS' | 'SOLO';
