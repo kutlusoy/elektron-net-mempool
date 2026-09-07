@@ -506,7 +506,7 @@
 </ng-template>
 
 <ng-template type="how-are-pool-found-blocks-attributed">
-  <p>Some pools do not embed any address or marker on-chain, so they cannot be identified from the blockchain alone. To still show who found such a block, this explorer takes part in a shared, public <a href="https://github.com/kutlusoy/elektron-net-registry" target="_blank">pool registry</a>: a pool that finds a block reports it directly to this server, which then calls back to that pool's own registered website to confirm the claim before showing it anywhere. A report is never trusted on its own.</p>
+  <p>On Elektron Net, a pool cannot embed its name in the coinbase using an <code>OP_RETURN</code> output the way some pools do on other networks: any extra coinbase output changes the coinbase txid, which breaks this network's per-block UTXO attestation. So pools cannot be identified from the blockchain alone here. To still show who found a block, this explorer takes part in a shared, public <a href="https://github.com/kutlusoy/elektron-net-registry" target="_blank">pool registry</a> instead: a pool that finds a block reports it directly to this server, which then calls back to that pool's own registered website to confirm the claim before showing it anywhere. A report is never trusted on its own.</p>
   <p>Any pool or explorer can join the registry by opening a pull request against it; see its <a href="https://github.com/kutlusoy/elektron-net-registry/tree/main/doc-elektron" target="_blank">integration guides</a> for details, or the <a [routerLink]="['/docs/api/rest' | relativeUrl]" fragment="post-pool-registry-report">REST API docs</a> for the reporting endpoint itself.</p>
 </ng-template>
 
