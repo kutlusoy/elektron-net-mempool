@@ -21,6 +21,7 @@ import syncAssets from './sync-assets';
 import icons from './api/liquid/icons';
 import { Common } from './api/common';
 import poolsUpdater from './tasks/pools-updater';
+import poolRegistryUpdater from './tasks/pool-registry-updater';
 import selfReportedPoolsPruner from './tasks/self-reported-pools-pruner';
 import indexer from './indexer';
 import nodesRoutes from './api/explorer/nodes.routes';
@@ -33,6 +34,7 @@ import pricesRoutes from './api/prices/prices.routes';
 import miningRoutes from './api/mining/mining-routes';
 import liquidRoutes from './api/liquid/liquid.routes';
 import bitcoinRoutes from './api/bitcoin/bitcoin.routes';
+import poolRegistryRoutes from './api/pool-registry.routes';
 import servicesRoutes from './api/services/services-routes';
 import fundingTxFetcher from './tasks/lightning/sync-tasks/funding-tx-fetcher';
 import forensicsService from './tasks/lightning/forensics.service';
@@ -248,6 +250,7 @@ class Server {
     }
 
     void poolsUpdater.$startService();
+    void poolRegistryUpdater.$startService();
     void selfReportedPoolsPruner.$startService();
   }
 
@@ -361,6 +364,7 @@ class Server {
 
   setUpHttpApiRoutes(): void {
     bitcoinRoutes.initRoutes(this.app);
+    poolRegistryRoutes.initRoutes(this.app);
     if (config.MEMPOOL.OFFICIAL) {
       bitcoinCoreRoutes.initRoutes(this.app);
     }

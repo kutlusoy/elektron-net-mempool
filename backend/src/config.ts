@@ -33,6 +33,8 @@ interface IConfig {
     POOLS_JSON_URL: string,
     POOLS_JSON_TREE_URL: string,
     POOLS_UPDATE_DELAY: number,
+    POOL_REGISTRY_URL: string,
+    POOL_REGISTRY_UPDATE_DELAY: number,
     AUDIT: boolean;
     CLUSTER_MEMPOOL: boolean;
     CLUSTER_MEMPOOL_INDEXING: boolean;
@@ -206,6 +208,12 @@ const defaults: IConfig = {
     'POOLS_JSON_URL': 'https://raw.githubusercontent.com/mempool/mining-pools/master/pools-v2.json',
     'POOLS_JSON_TREE_URL': 'https://api.github.com/repos/mempool/mining-pools/git/trees/master',
     'POOLS_UPDATE_DELAY': 604800, // in seconds, default is one week
+    // Base URL (raw file content, no trailing slash) of the shared
+    // elektron-net-registry repo -- see
+    // doc-elektron/guideline-pool-registry-reporting.md. pools.txt is
+    // fetched from <POOL_REGISTRY_URL>/pools.txt.
+    'POOL_REGISTRY_URL': 'https://raw.githubusercontent.com/kutlusoy/elektron-net-registry/main',
+    'POOL_REGISTRY_UPDATE_DELAY': 900, // in seconds, default is 15 minutes
     'AUDIT': false,
     'CLUSTER_MEMPOOL': false,
     'CLUSTER_MEMPOOL_INDEXING': false,
