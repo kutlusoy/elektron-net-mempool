@@ -1141,11 +1141,18 @@ class BlocksRepository {
    * registry-matched pool with a lower-confidence one -- callers are
    * expected to have already checked matchBlockMiner() failed before
    * reaching this.
+   *
+   * Returns whether a row was actually updated. A pool's own report can
+   * reach this server before this server has finished indexing that same
+   * block (the report is a near-instant HTTP round-trip, indexing it is
+   * several RPC calls plus a database write) -- callers should retry
+   * briefly on `false` rather than treat it as a final answer.
    * @asyncSafe
    */
-  public async $updateBlockPool(hash: string, poolId: number): Promise<void> {
+  public async $updateBlockPool(hash: string, poolId: number): Promise<boolean> {
     try {
-      await DB.query('UPDATE blocks SET pool_id = ? WHERE hash = ?', [poolId, hash]);
+      const [result]: any = await DB.query('UPDATE blocks SET pool_id = ? WHERE hash = ?', [poolId, hash]);
+      return result.affectedRows > 0;
     } catch (e) {
       logger.err(`Cannot update block pool for ${hash}. Reason: ` + (e instanceof Error ? e.message : e));
       throw e;
