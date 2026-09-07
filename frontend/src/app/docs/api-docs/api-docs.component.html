@@ -505,6 +505,11 @@
   </ul>
 </ng-template>
 
+<ng-template type="how-are-pool-found-blocks-attributed">
+  <p>On Elektron Net, a pool cannot embed its name in the coinbase using an <code>OP_RETURN</code> output the way some pools do on other networks: any extra coinbase output changes the coinbase txid, which breaks this network's per-block UTXO attestation. So pools cannot be identified from the blockchain alone here. To still show who found a block, this explorer takes part in a shared, public <a href="https://github.com/kutlusoy/elektron-net-registry" target="_blank">pool registry</a> instead: a pool that finds a block reports it directly to this server, which then calls back to that pool's own registered website to confirm the claim before showing it anywhere. A report is never trusted on its own.</p>
+  <p>Any pool or explorer can join the registry by opening a pull request against it; see its <a href="https://github.com/kutlusoy/elektron-net-registry/tree/main/doc-elektron" target="_blank">integration guides</a> for details, or the <a [routerLink]="['/docs/api/rest' | relativeUrl]" fragment="post-pool-registry-report">REST API docs</a> for the reporting endpoint itself.</p>
+</ng-template>
+
 <ng-template type="what-are-sigops">
   <p>A "sigop" is a way of accounting for the cost of "signature operations" in Bitcoin script, like <code>OP_CHECKSIG</code>, <code>OP_CHECKSIGVERIFY</code>, <code>OP_CHECKMULTISIG</code> and <code>OP_CHECKMULTISIGVERIFY</code></p>
   <p>These signature operations incur different costs depending on whether they are single or multi-sig operations, and on where they appear in a Bitcoin transaction.</p>

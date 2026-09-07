@@ -6350,6 +6350,37 @@ export const restApiDocsData = [
   {
     type: 'endpoint',
     category: 'mining',
+    httpRequestMethod: 'POST',
+    fragment: 'post-pool-registry-report',
+    title: 'POST Pool Registry Report',
+    description: {
+      default: 'Reports a block found by a pool listed in the shared <a href=\'https://github.com/kutlusoy/elektron-net-registry\'>pool registry</a>. <code>name</code> must match that pool\'s registered name exactly; <code>blockHash</code> is the 64-character hex block hash it found. Before attributing the block, this server calls back to the pool\'s own registered URL to confirm the claim, so a report is never trusted on its own. Returns <code>404</code> if <code>name</code> is not a known registry entry, <code>400</code> on a malformed payload.'
+    },
+    urlString: '/v1/pool-registry/report',
+    showConditions: [''],
+    showJsExamples: showJsExamplesDefaultFalse,
+    codeExample: {
+      default: {
+        codeTemplate: {
+          curl: `%{1}" "[[hostname]][[baseNetworkUrl]]/api/v1/pool-registry/report`, //custom interpolation technique handled in replaceCurlPlaceholder()
+          commonJS: ``,
+          esModule: ``
+        },
+        codeSampleMainnet: {
+          esModule: [],
+          commonJS: [],
+          curl: [`{\\"name\\": \\"Elektron Solo Pool\\", \\"blockHash\\": \\"000000000000000000a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5\\"}`],
+          headers: 'Content-Type: application/json',
+          response: `{
+  "attributed": true
+}`,
+        },
+      }
+    }
+  },
+  {
+    type: 'endpoint',
+    category: 'mining',
     httpRequestMethod: 'GET',
     fragment: 'get-hashrate',
     title: 'GET Hashrate',
@@ -12937,6 +12968,13 @@ export const faqData = [
     showConditions: bitcoinNetworks,
     fragment: 'how-can-i-share-or-verify-taproot-scripts',
     title: 'How can I share or verify Taproot scripts?',
+  },
+  {
+    type: 'endpoint',
+    category: 'advanced',
+    showConditions: bitcoinNetworks,
+    fragment: 'how-are-pool-found-blocks-attributed',
+    title: 'How does this explorer know which pool found a block?',
   },
   {
     type: 'category',
