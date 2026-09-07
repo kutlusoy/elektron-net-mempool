@@ -83,7 +83,13 @@ class PoolRegistryRoutes {
   /** @asyncUnsafe -- callers must try/catch */
   private async $confirmWithPool(url: string, blockHash: string): Promise<boolean> {
     const base = url.replace(/\/$/, '');
-    const response = await axios.get<ConfirmResponse>(`${base}/pool/identity/confirm`, {
+    // The registered pool URL is the dashboard's public domain, not the API
+    // itself - both elektron-net-pool and elektron-net-ppool serve their
+    // NestJS routes under a global "api" prefix, and the reference stack's
+    // reverse proxy only forwards /api/* to the backend (everything else
+    // goes to the dashboard frontend), so this must include /api or every
+    // callback 404s against the frontend instead of reaching the pool.
+    const response = await axios.get<ConfirmResponse>(`${base}/api/pool/identity/confirm`, {
       params: { blockHash },
       timeout: CALLBACK_TIMEOUT_MS,
     });
