@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">F4Pool mark</title>
+  <desc id="desc">A dark keycap with an orange F4 monogram and cyan mining signal bars.</desc>
+  <defs>
+    <linearGradient id="key" x1="16" y1="8" x2="112" y2="120" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#26354b"/>
+      <stop offset=".52" stop-color="#121b2a"/>
+      <stop offset="1" stop-color="#080d15"/>
+    </linearGradient>
+    <linearGradient id="face" x1="31" y1="26" x2="94" y2="101" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffb15c"/>
+      <stop offset="1" stop-color="#ff7a0f"/>
+    </linearGradient>
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="180%">
+      <feDropShadow dx="0" dy="10" stdDeviation="8" flood-color="#000" flood-opacity=".46"/>
+    </filter>
+  </defs>
+  <rect x="10" y="8" width="108" height="108" rx="27" fill="url(#key)" stroke="#50617a" stroke-opacity=".5" filter="url(#shadow)"/>
+  <rect x="18" y="16" width="92" height="86" rx="21" fill="none" stroke="#fff" stroke-opacity=".09"/>
+  <path d="M34 35h35v10H46v12h19v10H46v24H34V35Z" fill="url(#face)"/>
+  <path d="M79 35h12v34h9v10h-9v12H79V79H57v-9l22-35Zm0 17L68 69h11V52Z" fill="url(#face)"/>
+  <rect x="84" y="95" width="16" height="4" rx="2" fill="#34d7e8"/>
+  <rect x="78" y="103" width="22" height="4" rx="2" fill="#34d7e8" opacity=".8"/>
+  <rect x="70" y="111" width="30" height="4" rx="2" fill="#34d7e8" opacity=".6"/>
+</svg>
