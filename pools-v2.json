@@ -4,5 +4,11 @@
     "name": "Elektron Net PPLNS Pool",
     "link": "https://pplns.elektron-net.org/",
     "addresses": ["be1qv7hmlhk8lgs7zl3g0hdft88qkqmtlyldvn03a9"]
+  },
+  {
+    "id": 2,
+    "name": "F4pool.com",
+    "link": "https://f4pool.com/",
+    "addresses": ["be1qje06qe09q4ck8pqpp6r5ku3ak73mh8pergylkr"]
   }
 ]
