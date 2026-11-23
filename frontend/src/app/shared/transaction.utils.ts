@@ -2957,7 +2957,8 @@ export function getCoinbaseOpReturnLabel(scriptpubkeyAsm: string, isCoinbase: bo
   if (parts.length === 3 && secondLast === 'OP_PUSHBYTES_36' && last.length === 72 && last.toLowerCase().startsWith(WITNESS_COMMITMENT_HEADER)) {
     return 'Witness Commitment';
   }
-  if (secondLast === 'OP_PUSHBYTES_32' && last.length === 64) {
+  // Pools may append extranonce bytes behind the hash push, so the hash is not necessarily the last token.
+  if (parts.length >= 5 && parts[1].startsWith('OP_PUSHBYTES_') && parts[3] === 'OP_PUSHBYTES_32' && parts[4].length === 64) {
     return 'UTXO Attestation';
   }
   return null;
